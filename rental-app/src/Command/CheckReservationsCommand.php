@@ -24,7 +24,6 @@ class CheckReservationsCommand extends Command
     {
         $today = new \DateTime();
 
-        // Pobieramy wszystkie rezerwacje o statusie "confirmed"
         $reservations = $this->entityManager->getRepository(Reservation::class)->findBy([
             'status' => 'confirmed'
         ]);

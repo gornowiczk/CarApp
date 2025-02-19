@@ -44,7 +44,7 @@ class AdminController extends AbstractController
         return $this->redirectToRoute('admin_cars');
     }
 
-    // 👤 ZARZĄDZANIE UŻYTKOWNIKAMI
+  
     #[Route('/users', name: 'admin_users')]
     public function manageUsers(EntityManagerInterface $entityManager): Response
     {
@@ -62,7 +62,6 @@ class AdminController extends AbstractController
         return $this->redirectToRoute('admin_users');
     }
 
-    // 📅 ZARZĄDZANIE REZERWACJAMI
     #[Route('/reservations', name: 'admin_reservations')]
     public function manageReservations(EntityManagerInterface $entityManager): Response
     {

@@ -177,34 +177,59 @@ class ReservationController extends AbstractController
     #[Route('/reservations/{id}/contract', name: 'app_generate_contract')]
     public function generateContract(Reservation $reservation): Response
     {
-        // Konfiguracja Dompdf
         $pdfOptions = new Options();
         $pdfOptions->set('defaultFont', 'Arial');
-
+        $pdfOptions->set('isHtml5ParserEnabled', true);
         $dompdf = new Dompdf($pdfOptions);
 
-        // Pobieramy dane rezerwacji
-        $user = $reservation->getUser(); // Najemca
-        $car = $reservation->getCar(); // Samochód
-        $owner = $car->getOwner(); // Właściciel samochodu
+        $user = $reservation->getUser();
+        $car = $reservation->getCar();
+        $owner = $car->getOwner();
         $startDate = $reservation->getStartDate()->format('Y-m-d');
         $endDate = $reservation->getEndDate()->format('Y-m-d');
-
-        // Obliczamy cenę
         $days = $reservation->getStartDate()->diff($reservation->getEndDate())->days;
         $totalPrice = $days * $car->getPricePerDay();
 
-        // Tworzymy HTML faktury
-        $html = '
-        <h1>Faktura</h1>
-        <p><strong>Najemca:</strong> ' . $user->getFullName() . ' (' . $user->getEmail() . ')</p>
-        <p><strong>Właściciel pojazdu:</strong> ' . $owner->getFullName() . ' (' . $owner->getEmail() . ')</p>
-        <p><strong>Samochód:</strong> ' . $car->getBrand() . ' ' . $car->getModel() . ' (' . $car->getYear() . ')</p>
-        <p><strong>Numer rejestracyjny:</strong> ' . $car->getRegistrationNumber() . '</p>
-        <p><strong>Okres wynajmu:</strong> ' . $startDate . ' - ' . $endDate . ' (' . $days . ' dni)</p>
-        <p><strong>Cena za dzień:</strong> ' . number_format($car->getPricePerDay(), 2) . ' PLN</p>
-        <h3><strong>Łączna kwota:</strong> ' . number_format($totalPrice, 2) . ' PLN</h3>
-    ';
+        $html = ' 
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; line-height: 1.4; }
+        h1, h2 { text-align: center; font-size: 16px; }
+        .container { max-width: 700px; margin: auto; padding: 15px; border: 1px solid #000; background-color: #fff; }
+        .section { margin-bottom: 10px; padding: 5px; border-bottom: 1px solid #ccc; }
+        .section:last-child { border-bottom: none; }
+        .signature-container { display: flex; justify-content: space-between; margin-top: 30px; }
+        .signature-left { width: 45%; text-align: left; }
+        .signature-right { width: 45%; text-align: right; }
+        .signature-line { display: inline-block; width: 180px; border-top: 1px solid #000; margin-top: 10px; }
+    </style>
+    <div class="container">
+        <h1>Faktura Najmu Samochodu</h1>
+        <p style="text-align: right;"><strong>Data wystawienia:</strong> ' . date('Y-m-d') . '</p>
+        <div class="section">
+            <h2>Strony umowy</h2>
+            <p><strong>Wynajmujący:</strong> ' . $owner->getFullName() . ', ' . $owner->getAddress() . '</p>
+            <p><strong>Najemca:</strong> ' . $user->getFullName() . ', ' . $user->getAddress() . '</p>
+        </div>
+        <div class="section">
+            <h2>Przedmiot wynajmu</h2>
+            <p>Pojazd: <strong>' . $car->getBrand() . ' ' . $car->getModel() . ', rok ' . $car->getYear() . ', nr rej. ' . $car->getRegistrationNumber() . '</strong></p>
+        </div>
+        <div class="section">
+            <h2>Szczegóły Wynajmu</h2>
+            <p><strong>Okres wynajmu:</strong> ' . $startDate . ' - ' . $endDate . ' (' . $days . ' dni)</p>
+            <h2><strong>Łączna kwota:</strong> ' . number_format($totalPrice, 2) . ' PLN</h2>
+        </div>
+        <div class="signature-container">
+            <div class="signature-left">
+                <p class="signature-line"></p>
+                <p><strong>Podpis Najemcy</strong></p>
+            </div>
+            <div class="signature-right">
+                <p class="signature-line"></p>
+                <p><strong>Podpis Wynajmującego</strong></p>
+            </div>
+        </div>
+    </div>';
 
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', 'portrait');
@@ -215,12 +240,15 @@ class ReservationController extends AbstractController
             'Content-Disposition' => 'inline; filename="faktura.pdf"'
         ]);
     }
+
+
+
     #[Route('/reservations/{id}/rental-agreement', name: 'app_generate_rental_agreement')]
     public function generateRentalAgreement(Reservation $reservation): Response
     {
         $pdfOptions = new Options();
         $pdfOptions->set('defaultFont', 'Arial');
-
+        $pdfOptions->set('isHtml5ParserEnabled', true);
         $dompdf = new Dompdf($pdfOptions);
 
         $user = $reservation->getUser();
@@ -228,20 +256,53 @@ class ReservationController extends AbstractController
         $owner = $car->getOwner();
         $startDate = $reservation->getStartDate()->format('Y-m-d');
         $endDate = $reservation->getEndDate()->format('Y-m-d');
-
         $days = $reservation->getStartDate()->diff($reservation->getEndDate())->days;
         $totalPrice = $days * $car->getPricePerDay();
+        $rentalFee = $totalPrice * 0.30;
 
-        $html = '
-        <h1>Umowa najmu pojazdu</h1>
-        <p><strong>Najemca:</strong> ' . $user->getFullName() . ' (' . $user->getEmail() . ')</p>
-        <p><strong>Właściciel pojazdu:</strong> ' . $owner->getFullName() . ' (' . $owner->getEmail() . ')</p>
-        <p><strong>Samochód:</strong> ' . $car->getBrand() . ' ' . $car->getModel() . ' (' . $car->getYear() . ')</p>
-        <p><strong>Numer rejestracyjny:</strong> ' . $car->getRegistrationNumber() . '</p>
-        <p><strong>Okres wynajmu:</strong> ' . $startDate . ' - ' . $endDate . ' (' . $days . ' dni)</p>
-        <p><strong>Cena za dzień:</strong> ' . number_format($car->getPricePerDay(), 2) . ' PLN</p>
-        <h3><strong>Łączna kwota:</strong> ' . number_format($totalPrice, 2) . ' PLN</h3>
-    ';
+        $html = ' 
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; line-height: 1.4; }
+        h1, h2 { text-align: center; font-size: 16px; }
+        .container { max-width: 700px; margin: auto; padding: 15px; border: 1px solid #000; background-color: #fff; }
+        .section { margin-bottom: 10px; padding: 5px; border-bottom: 1px solid #ccc; }
+        .section:last-child { border-bottom: none; }
+        .signature-container { display: flex; justify-content: space-between; margin-top: 50px; align-items: center; }
+        .signature-left { width: 45%; text-align: left; }
+        .signature-right { width: 45%; text-align: right; }
+        .signature-line { display: inline-block; width: 200px; border-top: 1px solid #000; margin-top: 40px; }
+    </style>
+    <div class="container">
+        <h1>Umowa Najmu Samochodu</h1>
+        <p style="text-align: right;"><strong>Zawarta w dniu:</strong> ' . $startDate . '</p>
+        <div class="section">
+            <h2>Strony umowy</h2>
+            <p><strong>Wynajmujący:</strong> ' . $owner->getFullName() . ', ' . $owner->getAddress() . ', PESEL/NIP: ' . $owner->getPeselOrNip() . '</p>
+            <p><strong>Najemca:</strong> ' . $user->getFullName() . ', ' . $user->getAddress() . ', PESEL/NIP: ' . $user->getPeselOrNip() . '</p>
+        </div>
+        <div class="section">
+            <h2>Przedmiot umowy</h2>
+            <p>Wynajmujący oświadcza, że jest właścicielem pojazdu:</p>
+            <p><strong>' . $car->getBrand() . ' ' . $car->getModel() . ', rok ' . $car->getYear() . ', nr rej. ' . $car->getRegistrationNumber() . '</strong></p>
+        </div>
+        <div class="section">
+            <h2>Warunki najmu</h2>
+            <p>1. Okres wynajmu: <strong>' . $startDate . ' - ' . $endDate . ' (' . $days . ' dni)</strong>.</p>
+            <p>2. Czynsz najmu: <strong>' . number_format($rentalFee, 2) . ' PLN</strong> (30% ostatecznej kwoty).</p>
+            <p>3. Łączna kwota do zapłaty: <strong>' . number_format($totalPrice, 2) . ' PLN</strong>.</p>
+            <p>4. Najemca zobowiązuje się do zwrotu pojazdu w stanie niepogorszonym.</p>
+        </div>
+        <div class="signature-container">
+            <div class="signature-left">
+                <p class="signature-line"></p>
+                <p><strong>Podpis Najemcy</strong></p>
+            </div>
+            <div class="signature-right">
+                <p class="signature-line"></p>
+                <p><strong>Podpis Wynajmującego</strong></p>
+            </div>
+        </div>
+    </div>';
 
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', 'portrait');
@@ -252,6 +313,8 @@ class ReservationController extends AbstractController
             'Content-Disposition' => 'inline; filename="umowa_najmu.pdf"'
         ]);
     }
+
+
     #[Route('/reservations/{id<\d+>}', name: 'app_reservation_details')]
     public function reservationDetails(int $id, EntityManagerInterface $entityManager, Security $security): Response
     {
@@ -374,3 +437,4 @@ class ReservationController extends AbstractController
 
 
 }
+

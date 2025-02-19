@@ -26,7 +26,7 @@ class AdminController extends AbstractController
         ]);
     }
 
-    // 🚗 ZARZĄDZANIE SAMOCHODAMI
+    
     #[Route('/cars', name: 'admin_cars')]
     public function manageCars(EntityManagerInterface $entityManager): Response
     {

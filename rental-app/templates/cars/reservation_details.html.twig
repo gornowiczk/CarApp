@@ -1,0 +1,128 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Szczegóły samochodu{% endblock %}
+
+{% block body %}
+    <div class="container mt-4">
+        <h1 class="mb-3">Szczegóły samochodu</h1>
+
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Marka:</strong> {{ car.brand }}</p>
+                <p><strong>Model:</strong> {{ car.model }}</p>
+                <p><strong>Rok produkcji:</strong> {{ car.year }}</p>
+                <p><strong>Numer rejestracyjny:</strong> {{ car.registrationNumber }}</p>
+                <p><strong>Cena za dzień:</strong> {{ car.pricePerDay }} zł</p>
+                <p><strong>Lokalizacja:</strong> {{ car.location }}</p>
+                <p><strong>Dostępność:</strong>
+                    {% if car.isAvailable %}
+                        <span class="badge bg-success">Dostępny</span>
+                    {% else %}
+                        <span class="badge bg-danger">Niedostępny</span>
+                    {% endif %}
+                </p>
+            </div>
+
+            <div class="col-md-6">
+                {% if car.mainImage %}
+                    <p><strong>Zdjęcie główne:</strong></p>
+                    <img src="{{ asset('uploads/cars/' ~ car.mainImage) }}" alt="Zdjęcie samochodu" class="img-fluid rounded shadow">
+                {% endif %}
+
+                {% if car.gallery %}
+                    <p><strong>Galeria zdjęć:</strong></p>
+                    <div class="gallery d-flex flex-wrap">
+                        {% for image in car.gallery %}
+                            <img src="{{ asset('uploads/cars/' ~ image) }}" alt="Zdjęcie samochodu" class="img-thumbnail me-2">
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <hr>
+
+        {% if app.user and car.isAvailable and app.user != car.owner %}
+            <h2 class="mt-4">📅 Wybierz daty rezerwacji</h2>
+            <div id="rental-calendar" class="calendar-container"></div>
+            <button id="confirmReservationBtn" class="btn btn-primary mt-3 w-100" style="display: none;">
+                📌 Potwierdź rezerwację
+            </button>
+        {% elseif app.user == car.owner %}
+            <p class="mt-3 text-danger">🚫 Nie możesz zarezerwować własnego samochodu.</p>
+        {% else %}
+            <p class="mt-3 text-muted">Rezerwacja dostępna tylko dla zalogowanych użytkowników.</p>
+        {% endif %}
+
+        <hr>
+
+        <!-- Sekcja opinii o samochodzie -->
+        <h2 class="mt-4">📝 Opinie o samochodzie</h2>
+
+        {% if car.reviews is not empty %}
+            <ul class="list-group">
+                {% for review in car.reviews %}
+                    <li class="list-group-item">
+                        <strong>⭐ Ocena:</strong> {{ review.rating }} / 5 <br>
+                        <strong>💬 Opinia:</strong> {{ review.comment }} <br>
+                        <small>📅 Dodano: {{ review.createdAt|date('d-m-Y H:i') }}</small>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-muted">Brak opinii dla tego samochodu.</p>
+        {% endif %}
+
+        {% if app.user %}
+            <a href="{{ path('review_new', {'carId': car.id}) }}" class="btn btn-primary mt-3">
+                ✍ Dodaj swoją opinię
+            </a>
+        {% else %}
+            <p class="mt-3"><a href="{{ path('app_login') }}">Zaloguj się</a>, aby dodać opinię.</p>
+        {% endif %}
+
+        <a href="{{ path('app_list_cars', {'filter': 'all'}) }}" class="btn btn-secondary mt-4">Powrót</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var confirmReservationBtn = document.getElementById('confirmReservationBtn');
+            var selectedStartDate = null;
+            var selectedEndDate = null;
+
+            var rentalCalendar = new FullCalendar.Calendar(document.getElementById('rental-calendar'), {
+                initialView: 'dayGridMonth',
+                selectable: true,
+                height: 250, // Zmniejszony kalendarz
+                locale: 'pl',
+                validRange: { start: new Date().toISOString().split("T")[0] },
+                select: function (info) {
+                    selectedStartDate = info.startStr;
+                    selectedEndDate = info.endStr;
+                    confirmReservationBtn.style.display = "block";
+                },
+                events: "{{ path('app_car_availability', {'id': car.id}) }}",
+                eventColor: "red"
+            });
+
+            rentalCalendar.render();
+
+            confirmReservationBtn.addEventListener('click', function () {
+                if (!selectedStartDate || !selectedEndDate) {
+                    alert('Proszę wybrać zakres dat.');
+                    return;
+                }
+                window.location.href = "{{ path('app_confirm_reservation', {'id': car.id}) }}?start_date=" + selectedStartDate + "&end_date=" + selectedEndDate;
+            });
+        });
+    </script>
+
+    <style>
+        .calendar-container {
+            max-width: 400px; /* Zmniejszona szerokość kalendarza */
+            margin: 0 auto;
+        }
+    </style>
+
+{% endblock %}
+

@@ -1,0 +1,39 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}✏ Edytuj samochód{% endblock %}
+
+{% block body %}
+    <div class="container mt-4">
+        <h1 class="mb-4 text-center">✏ Edytuj samochód</h1>
+
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        {{ form_start(form) }}
+
+                        <div class="mb-3">
+                            {{ form_row(form.brand, {'label': 'Marka'}) }}
+                            {{ form_row(form.model, {'label': 'Model'}) }}
+                            {{ form_row(form.year, {'label': 'Rok produkcji'}) }}
+                            {{ form_row(form.registrationNumber, {'label': 'Numer rejestracyjny'}) }}
+                            {{ form_row(form.pricePerDay, {'label': 'Cena za dzień'}) }}
+                            {{ form_row(form.location, {'label': 'Lokalizacja'}) }}
+                            {{ form_row(form.mainImage, {'label': 'Zdjęcie główne'}) }}
+                            {{ form_row(form.gallery, {'label': 'Galeria zdjęć'}) }}
+                        </div>
+
+                        <button class="btn btn-success w-100">💾 Zapisz zmiany</button>
+
+                        {{ form_end(form) }}
+                    </div>
+                </div>
+
+                <a href="{{ path('app_my_cars') }}" class="btn btn-secondary w-100 mt-3">
+                    ⬅ Powrót
+                </a>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+

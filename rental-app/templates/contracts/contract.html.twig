@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Umowa Najmu Samochodu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            margin: 40px;
+            line-height: 1.6;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            text-align: center;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+        .contract-container {
+            border: 2px solid #000;
+            padding: 20px;
+            max-width: 800px;
+            margin: auto;
+            background-color: #fff;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+        .section:last-child {
+            border-bottom: none;
+        }
+        .signature {
+            margin-top: 40px;
+            text-align: center;
+        }
+        .signature p {
+            margin-top: 40px;
+        }
+        .signature-line {
+            display: inline-block;
+            width: 200px;
+            border-top: 1px solid #000;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="contract-container">
+    <h1>Umowa Najmu Samochodu</h1>
+
+    <div class="section">
+        <p><strong>Data zawarcia umowy:</strong> {{ reservation.startDate|date('d-m-Y') }}</p>
+    </div>
+
+    <div class="section">
+        <h2>Strony umowy</h2>
+        <p><strong>Najemca:</strong> {{ reservation.user.fullName }}</p>
+        <p><strong>Email:</strong> {{ reservation.user.email }}</p>
+        <p><strong>Adres:</strong> {{ reservation.user.address }}</p>
+    </div>
+
+    <div class="section">
+        <h2>Informacje o samochodzie</h2>
+        <p><strong>Właściciel:</strong> {{ reservation.car.owner.fullName }}</p>
+        <p><strong>Marka:</strong> {{ reservation.car.brand }}</p>
+        <p><strong>Model:</strong> {{ reservation.car.model }}</p>
+        <p><strong>Rok produkcji:</strong> {{ reservation.car.year }}</p>
+        <p><strong>Numer rejestracyjny:</strong> {{ reservation.car.registrationNumber }}</p>
+        <p><strong>Cena wynajmu za dzień:</strong> {{ reservation.car.pricePerDay }} zł</p>
+        <p><strong>Okres wynajmu:</strong> od {{ reservation.startDate|date('d-m-Y') }} do {{ reservation.endDate|date('d-m-Y') }}</p>
+    </div>
+
+    <div class="section">
+        <h2>Warunki umowy</h2>
+        <p>Najemca zobowiązuje się do przestrzegania wszystkich warunków umowy, w tym:</p>
+        <ul>
+            <li>Zwrotu pojazdu w stanie niepogorszonym, poza normalnym zużyciem eksploatacyjnym.</li>
+            <li>Nieudostępniania samochodu osobom trzecim bez zgody właściciela.</li>
+            <li>Przestrzegania przepisów ruchu drogowego oraz dbania o pojazd.</li>
+        </ul>
+        <p>Wszelkie uszkodzenia lub opóźnienia w zwrocie mogą skutkować dodatkowymi kosztami.</p>
+    </div>
+
+    <div class="signature">
+        <p class="signature-line"></p>
+        <p>Podpis Najemcy</p>
+    </div>
+</div>
+
+</body>
+</html>

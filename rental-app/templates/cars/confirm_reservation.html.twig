@@ -1,0 +1,74 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Potwierdzenie rezerwacji{% endblock %}
+
+{% block body %}
+    <div class="container mt-5">
+        <h2 class="text-center">📌 Potwierdzenie rezerwacji</h2>
+
+        <div class="card shadow-sm mt-4">
+            <div class="card-body">
+                <h4>🚗 <strong>Samochód:</strong> {{ car.brand }} {{ car.model }} ({{ car.year }})</h4>
+                <p><strong>🔢 Numer rejestracyjny:</strong> {{ car.registrationNumber }}</p>
+
+                <hr>
+
+                <!-- Wybrane daty -->
+                <div class="mb-3">
+                    <label for="selected-dates" class="form-label">📆 Wybrane daty:</label>
+                    <input type="text" id="selected-dates" class="form-control" disabled 
+                        value="{{ app.request.query.get('start_date') }} - {{ app.request.query.get('end_date') }}">
+                </div>
+
+                <!-- Obliczenie ceny -->
+                {% set startDate = app.request.query.get('start_date')|date('Y-m-d') %}
+                {% set endDate = app.request.query.get('end_date')|date('Y-m-d') %}
+                {% set days = (date(endDate).diff(date(startDate)).days) %}
+                {% set totalPrice = days * car.pricePerDay %}
+
+                <p><strong>📆 Liczba dni:</strong> {{ days }}</p>
+                <p><strong>💰 Cena za dzień:</strong> {{ car.pricePerDay }} zł</p>
+                <h3 class="text-success"><strong>💳 Całkowity koszt: {{ totalPrice }} zł</strong></h3>
+
+                <hr>
+
+                <form id="reservation-form" method="post" action="{{ path('app_confirm_reservation', {'id': car.id}) }}">
+                    <input type="hidden" name="start_date" value="{{ startDate }}">
+                    <input type="hidden" name="end_date" value="{{ endDate }}">
+
+                    <div class="mb-3">
+                        <label for="phoneNumber" class="form-label">📞 Numer telefonu:</label>
+                        <input type="tel" id="phoneNumber" name="phoneNumber" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="rentalLocation" class="form-label">📍 Preferowana lokalizacja odbioru:</label>
+                        <input type="text" class="form-control" name="rentalLocation" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="comments" class="form-label">✍ Dodatkowe uwagi (opcjonalnie):</label>
+                        <textarea id="comments" name="comments" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100">✅ Zarezerwuj</button>
+                </form>
+
+                <a href="{{ path('app_car_details', {'id': car.id}) }}" class="btn btn-secondary mt-3 w-100">⬅ Powrót do szczegółów samochodu</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var startDate = document.getElementById('start_date').value;
+            var endDate = document.getElementById('end_date').value;
+
+            if (startDate && endDate) {
+                document.getElementById('selected-dates').value = startDate + " - " + endDate;
+            }
+        });
+    </script>
+
+{% endblock %}
+

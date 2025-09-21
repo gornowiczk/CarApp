@@ -16,75 +16,86 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_ADMIN')]
 class AdminController extends AbstractController
 {
-    #[Route('/', name: 'admin_dashboard')]
-    public function dashboard(EntityManagerInterface $entityManager): Response
+    #[Route('/', name: 'admin_dashboard', methods: ['GET'])]
+    public function dashboard(EntityManagerInterface $em): Response
     {
         return $this->render('admin/dashboard.html.twig', [
-            'users' => $entityManager->getRepository(User::class)->findAll(),
-            'cars' => $entityManager->getRepository(Car::class)->findAll(),
-            'reservations' => $entityManager->getRepository(Reservation::class)->findAll(),
+            'users'        => $em->getRepository(User::class)->findAll(),
+            'cars'         => $em->getRepository(Car::class)->findAll(),
+            'reservations' => $em->getRepository(Reservation::class)->findAll(),
         ]);
     }
 
-    // 🚗 ZARZĄDZANIE SAMOCHODAMI
-    #[Route('/cars', name: 'admin_cars')]
-    public function manageCars(EntityManagerInterface $entityManager): Response
+    #[Route('/cars', name: 'admin_cars', methods: ['GET'])]
+    public function manageCars(EntityManagerInterface $em): Response
     {
         return $this->render('admin/cars.html.twig', [
-            'cars' => $entityManager->getRepository(Car::class)->findAll(),
+            'cars' => $em->getRepository(Car::class)->findAll(),
         ]);
     }
 
     #[Route('/car/delete/{id}', name: 'admin_delete_car', methods: ['POST'])]
-    public function deleteCar(Car $car, EntityManagerInterface $entityManager): Response
+    public function deleteCar(Request $request, Car $car, EntityManagerInterface $em): Response
     {
-        $entityManager->remove($car);
-        $entityManager->flush();
+        if (!$this->isCsrfTokenValid('admin_delete_car_'.$car->getId(), $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Błędny token.');
+        }
+
+        $em->remove($car);
+        $em->flush();
         $this->addFlash('success', 'Samochód został usunięty.');
         return $this->redirectToRoute('admin_cars');
     }
 
-    // 👤 ZARZĄDZANIE UŻYTKOWNIKAMI
-    #[Route('/users', name: 'admin_users')]
-    public function manageUsers(EntityManagerInterface $entityManager): Response
+    #[Route('/users', name: 'admin_users', methods: ['GET'])]
+    public function manageUsers(EntityManagerInterface $em): Response
     {
         return $this->render('admin/users.html.twig', [
-            'users' => $entityManager->getRepository(User::class)->findAll(),
+            'users' => $em->getRepository(User::class)->findAll(),
         ]);
     }
 
     #[Route('/user/delete/{id}', name: 'admin_delete_user', methods: ['POST'])]
-    public function deleteUser(User $user, EntityManagerInterface $entityManager): Response
+    public function deleteUser(Request $request, User $user, EntityManagerInterface $em): Response
     {
-        $entityManager->remove($user);
-        $entityManager->flush();
+        if (!$this->isCsrfTokenValid('admin_delete_user_'.$user->getId(), $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Błędny token.');
+        }
+
+        $em->remove($user);
+        $em->flush();
         $this->addFlash('success', 'Użytkownik został usunięty.');
         return $this->redirectToRoute('admin_users');
     }
 
-    // 📅 ZARZĄDZANIE REZERWACJAMI
-    #[Route('/reservations', name: 'admin_reservations')]
-    public function manageReservations(EntityManagerInterface $entityManager): Response
+    #[Route('/reservations', name: 'admin_reservations', methods: ['GET'])]
+    public function manageReservations(EntityManagerInterface $em): Response
     {
         return $this->render('admin/reservations.html.twig', [
-            'reservations' => $entityManager->getRepository(Reservation::class)->findAll(),
+            'reservations' => $em->getRepository(Reservation::class)->findAll(),
         ]);
     }
 
     #[Route('/reservation/accept/{id}', name: 'admin_accept_reservation', methods: ['POST'])]
-    public function acceptReservation(Reservation $reservation, EntityManagerInterface $entityManager): Response
+    public function acceptReservation(Request $request, Reservation $reservation, EntityManagerInterface $em): Response
     {
+        if (!$this->isCsrfTokenValid('admin_accept_reservation_'.$reservation->getId(), $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Błędny token.');
+        }
         $reservation->setStatus('accepted');
-        $entityManager->flush();
+        $em->flush();
         $this->addFlash('success', 'Rezerwacja została zaakceptowana.');
         return $this->redirectToRoute('admin_reservations');
     }
 
     #[Route('/reservation/reject/{id}', name: 'admin_reject_reservation', methods: ['POST'])]
-    public function rejectReservation(Reservation $reservation, EntityManagerInterface $entityManager): Response
+    public function rejectReservation(Request $request, Reservation $reservation, EntityManagerInterface $em): Response
     {
+        if (!$this->isCsrfTokenValid('admin_reject_reservation_'.$reservation->getId(), $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Błędny token.');
+        }
         $reservation->setStatus('rejected');
-        $entityManager->flush();
+        $em->flush();
         $this->addFlash('danger', 'Rezerwacja została odrzucona.');
         return $this->redirectToRoute('admin_reservations');
     }

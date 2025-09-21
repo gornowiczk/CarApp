@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Faktura VAT</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; font-size: 14px; }
+        h1 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+    </style>
+</head>
+<body>
+<h1>Faktura VAT</h1>
+<p><strong>Data wystawienia:</strong> {{ "now"|date('d-m-Y') }}</p>
+<p><strong>Nabywca:</strong> {{ reservation.user.firstName }} {{ reservation.user.lastName }} ({{ reservation.user.email }})</p>
+<p><strong>Adres:</strong> {{ reservation.user.address }}</p>
+<p><strong>Sprzedawca:</strong> {{ reservation.car.owner.firstName }} {{ reservation.car.owner.lastName }}</p>
+
+<table>
+    <thead>
+    <tr>
+        <th>Opis</th>
+        <th>Ilość dni</th>
+        <th>Cena za dzień</th>
+        <th>Łącznie</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>Wynajem samochodu {{ reservation.car.brand }} {{ reservation.car.model }}</td>
+        <td>{{ reservation.startDate.diff(reservation.endDate).days + 1 }}</td>
+        <td>{{ reservation.car.pricePerDay }} zł</td>
+        <td>{{ (reservation.startDate.diff(reservation.endDate).days + 1) * reservation.car.pricePerDay }} zł</td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

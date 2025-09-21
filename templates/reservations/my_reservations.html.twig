@@ -1,47 +1,67 @@
 {% extends 'base.html.twig' %}
-
 {% block title %}Moje rezerwacje{% endblock %}
 
 {% block body %}
-    <div class="container">
-        <h2>Moje rezerwacje</h2>
+    <style>
+        .cardx{border:none;border-radius:18px;box-shadow:0 10px 28px rgba(15,23,42,.08)}
+        .muted{color:#64748b}
+        .badge-soft{border-radius:999px;padding:.35rem .6rem;font-weight:600;font-size:.8rem}
+        .soft-pending{background:#fff7e6;color:#b7791f}
+        .soft-accepted{background:#e9fbe7;color:#15803d}
+        .soft-completed{background:#e2e8f0;color:#334155}
+        .soft-rejected{background:#fee2e2;color:#b91c1c}
+        .btn-cta{border-radius:12px;font-weight:600}
+    </style>
 
-        <table class="table table-striped">
-            <thead>
-            <tr>
-                <th>Samochód</th>
-                <th>Data początkowa</th>
-                <th>Data końcowa</th>
-                <th>Status</th>
-                <th>Akcje</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for reservation in reservations %}
-                <tr>
-                    <td>{{ reservation.car.brand }} {{ reservation.car.model }}</td>
-                    <td>{{ reservation.startDate|date('Y-m-d H:i') }}</td>
-                    <td>{{ reservation.endDate|date('Y-m-d H:i') }}</td>
-                    <td>
-                        {% if reservation.status == 'pending' %}
-                            <span class="badge bg-warning">Oczekuje</span>
-                        {% elseif reservation.status == 'accepted' %}
-                            <span class="badge bg-success">Zaakceptowana</span>
-                        {% else %}
-                            <span class="badge bg-danger">Odrzucona</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="{{ path('app_reservation_details', {'id': reservation.id}) }}" class="btn btn-info btn-sm">Szczegóły</a>
-                        {% if reservation.car.owner == app.user %}
-                            <a href="{{ path('app_generate_contract', {'id': reservation.id}) }}" class="btn btn-primary btn-sm">
-                                Pobierz umowę najmu
-                            </a>
-                        {% endif %}
-                    </td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+    <div class="container my-4">
+        <div class="card cardx">
+            <div class="card-body">
+                <h4 class="mb-3">📅 Moje rezerwacje</h4>
+
+                {% if reservations is empty %}
+                    <div class="alert alert-info mb-0">Brak rezerwacji.</div>
+                {% else %}
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead class="table-light">
+                            <tr>
+                                <th>Samochód</th>
+                                <th>Okres</th>
+                                <th>Status</th>
+                                <th class="text-end">Akcje</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for r in reservations %}
+                                <tr>
+                                    <td class="fw-semibold">{{ r.car.brand }} {{ r.car.model }}</td>
+                                    <td class="muted">{{ r.startDate|date('Y-m-d') }} → {{ r.endDate|date('Y-m-d') }}</td>
+                                    <td>
+                                        {% set s = r.status %}
+                                        {% if s == 'accepted' %}
+                                            <span class="badge-soft soft-accepted">Zaakceptowana</span>
+                                        {% elseif s == 'pending' %}
+                                            <span class="badge-soft soft-pending">Oczekuje</span>
+                                        {% elseif s == 'completed' %}
+                                            <span class="badge-soft soft-completed">Zakończona</span>
+                                        {% else %}
+                                            <span class="badge-soft soft-rejected">Odrzucona</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if r.status == 'accepted' %}
+                                            <a class="btn btn-sm btn-outline-success btn-cta" href="{{ path('app_contract_generate', {'id': r.id}) }}">Pobierz umowę</a>
+                                        {% else %}
+                                            <span class="muted small">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
     </div>
 {% endblock %}

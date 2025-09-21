@@ -4,373 +4,212 @@ namespace App\Controller;
 
 use App\Entity\Car;
 use App\Entity\Reservation;
-use Symfony\Component\Form\Extension\Core\Type\DateTimeType;
+use App\Repository\ReservationRepository;
+use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Security\Core\Security;
-use Symfony\Component\HttpFoundation\Request;
-use Dompdf\Dompdf;
-use Dompdf\Options;
-use Symfony\Component\Form\Extension\Core\Type\TextareaType;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Security\Csrf\CsrfToken;
+use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
-
-class ReservationController extends AbstractController
+#[Route('/reservations')]
+final class ReservationController extends AbstractController
 {
-    #[Route('/reservations', name: 'app_reservations')]
-    public function index(Security $security, EntityManagerInterface $entityManager): Response
+    public function __construct(
+        private readonly EntityManagerInterface $em,
+        private readonly CsrfTokenManagerInterface $csrf,
+        private readonly NotificationService $notifier,
+    ) {}
+
+    #[IsGranted('ROLE_USER')]
+    #[Route('', name: 'app_reservations', methods: ['GET'])]
+    public function index(ReservationRepository $repo): Response
     {
-        $user = $security->getUser();
+        $user = $this->getUser();
 
-        if (!$user) {
-            return $this->redirectToRoute('app_login');
-        }
+        $myReservations = $repo->findBy(['user' => $user], ['startDate' => 'DESC']);
 
-        $myReservations = $entityManager->getRepository(Reservation::class)->findBy(['user' => $user]);
-
-        $ownedCars = $entityManager->getRepository(Car::class)->findBy(['owner' => $user]);
-        $carReservations = [];
-        foreach ($ownedCars as $car) {
-            $carReservations = array_merge($carReservations, $entityManager->getRepository(Reservation::class)->findBy(['car' => $car]));
-        }
+        $carReservations = $repo->createQueryBuilder('r')
+            ->join('r.car', 'c')
+            ->andWhere('c.owner = :owner')
+            ->setParameter('owner', $user)
+            ->orderBy('r.startDate', 'DESC')
+            ->getQuery()->getResult();
 
         return $this->render('reservations/reservations.html.twig', [
-            'myReservations' => $myReservations,
+            'myReservations'  => $myReservations,
             'carReservations' => $carReservations,
         ]);
     }
-    #[Route('/reservations/my', name: 'app_my_reservations')]
-    public function myReservations(Security $security, EntityManagerInterface $entityManager): Response
+
+
+
+    #[IsGranted('ROLE_USER')]
+    #[Route('/reserve/{id}', name: 'app_reserve_car', methods: ['POST'])]
+    public function reserveCar(Request $request, Car $car): Response
     {
-        $user = $security->getUser();
-
-        if (!$user) {
-            return $this->redirectToRoute('app_login');
-        }
-
-        // Pobieramy rezerwacje użytkownika
-        $reservations = $entityManager->getRepository(Reservation::class)->findBy(['user' => $user]);
-
-        return $this->render('reservations/my_reservations.html.twig', [
-            'reservations' => $reservations
-        ]);
-    }
-    #[Route('/cars/{id}/details', name: 'app_car_details')]
-    public function carDetails(Car $car): Response
-    {
-        return $this->render('cars/reservation_details.html.twig', [
-            'car' => $car,
-        ]);
-    }
-
-
-
-    #[Route('/cars/{id}/reserve', name: 'app_reserve_car')]
-    public function reserveCar(Request $request, Car $car, EntityManagerInterface $entityManager, Security $security): Response
-    {
-        $user = $security->getUser();
-
-        if (!$user) {
-            return $this->redirectToRoute('app_login');
-        }
-
-        if ($car->getOwner() === $user) {
-            $this->addFlash('danger', 'Nie możesz zarezerwować własnego samochodu.');
+        if ($car->getOwner() === $this->getUser() || !$car->isAvailable()) {
+            $this->addFlash('danger', 'Nie możesz zarezerwować tego auta.');
             return $this->redirectToRoute('app_car_details', ['id' => $car->getId()]);
         }
 
-        $reservation = new Reservation();
-        $form = $this->createFormBuilder($reservation)
-            ->add('startDate', DateTimeType::class, ['widget' => 'single_text'])
-            ->add('endDate', DateTimeType::class, ['widget' => 'single_text'])
-            ->add('comment', TextareaType::class, ['required' => false])
-            ->getForm();
-
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $reservation->setUser($user);
-            $reservation->setCar($car);
-            $reservation->setStatus('pending');
-
-            $entityManager->persist($reservation);
-            $entityManager->flush();
-
-            $this->addFlash('success', 'Rezerwacja została złożona!');
-            return $this->redirectToRoute('app_reservations');
+        $token = $request->request->get('_token');
+        if (!$this->csrf->isTokenValid(new CsrfToken('reserve_car_'.$car->getId(), $token))) {
+            $this->addFlash('danger', 'Błędny token.');
+            return $this->redirectToRoute('app_car_details', ['id' => $car->getId()]);
         }
 
-        return $this->render('reservations/new.html.twig', [
-            'form' => $form->createView(),
+        try {
+            $start = self::parseYmdOrFail($request->get('start'))->setTime(0,0);
+            $end   = self::parseYmdOrFail($request->get('end'))->setTime(0,0);
+        } catch (\Throwable) {
+            $this->addFlash('danger', 'Nieprawidłowe daty.');
+            return $this->redirectToRoute('app_car_details', ['id' => $car->getId()]);
+        }
+
+        if ($end < $start) {
+            $this->addFlash('danger', 'Data zakończenia musi być po rozpoczęciu.');
+            return $this->redirectToRoute('app_car_details', ['id' => $car->getId()]);
+        }
+
+        $overlap = $this->em->getRepository(Reservation::class)->createQueryBuilder('r')
+            ->andWhere('r.car = :car')
+            ->andWhere('r.status IN (:active)')
+            ->andWhere('r.startDate <= :end AND r.endDate >= :start')
+            ->setParameter('car', $car)
+            ->setParameter('active', ['pending','accepted'])
+            ->setParameter('start', $start)
+            ->setParameter('end',   $end)
+            ->getQuery()->getResult();
+
+        if ($overlap) {
+            $this->addFlash('danger', 'Termin jest zajęty.');
+            return $this->redirectToRoute('app_car_details', ['id' => $car->getId()]);
+        }
+
+        $reservation = (new Reservation())
+            ->setUser($this->getUser())
+            ->setCar($car)
+            ->setStartDate($start)
+            ->setEndDate($end)
+            ->setStatus('pending');
+
+        $this->em->persist($reservation);
+        $this->em->flush();
+
+        // 🔔 powiadom właściciela
+        $this->notifier->reservationCreated($reservation);
+
+        $this->addFlash('success', 'Rezerwacja złożona.');
+        return $this->redirectToRoute('app_reservations');
+    }
+
+    #[IsGranted('ROLE_USER')]
+    #[Route('/confirm/{id}', name: 'app_reservation_confirm', methods: ['POST'])]
+    public function confirm(Request $request, Car $car): Response
+    {
+        $start = self::parseYmdOrFail($request->get('start'))->setTime(0,0);
+        $end   = self::parseYmdOrFail($request->get('end'))->setTime(0,0);
+
+        if ($end < $start) {
+            $this->addFlash('danger', 'Nieprawidłowe daty.');
+            return $this->redirectToRoute('app_car_details', ['id' => $car->getId()]);
+        }
+
+        $days = $start->diff($end)->days + 1;
+        $total = $days * (float) $car->getPricePerDay();
+
+        return $this->render('reservations/confirm.html.twig', [
+            'car'   => $car,
+            'start' => $start,
+            'end'   => $end,
+            'days'  => $days,
+            'pricePerDay' => $car->getPricePerDay(),
+            'total' => $total,
+            'csrf'  => $this->csrf->getToken('reserve_store_'.$car->getId())->getValue(),
         ]);
     }
 
-
-
-    #[Route('/reservations/{id}/accept', name: 'app_accept_reservation', methods: ['POST'])]
-    public function acceptReservation(Reservation $reservation, Security $security, EntityManagerInterface $entityManager): Response
+    #[IsGranted('ROLE_USER')]
+    #[Route('/store/{id}', name: 'app_reservation_store', methods: ['POST'])]
+    public function store(Request $request, Car $car): Response
     {
-        $user = $security->getUser();
+        $start = self::parseYmdOrFail($request->get('start'))->setTime(0,0);
+        $end   = self::parseYmdOrFail($request->get('end'))->setTime(0,0);
 
-        if (!$user || $reservation->getCar()->getOwner() !== $user) {
-            $this->addFlash('danger', 'Nie masz uprawnień do akceptowania tej rezerwacji.');
-            return $this->redirectToRoute('app_reservations');
-        }
+        $reservation = (new Reservation())
+            ->setUser($this->getUser())
+            ->setCar($car)
+            ->setStartDate($start)
+            ->setEndDate($end)
+            ->setStatus('pending');
 
-        if ($reservation->getStatus() !== 'pending') {
-            $this->addFlash('warning', 'Nie można już zmienić statusu tej rezerwacji.');
-            return $this->redirectToRoute('app_reservations');
-        }
+        $this->em->persist($reservation);
+        $this->em->flush();
 
+        // 🔔 powiadom właściciela
+        $this->notifier->reservationCreated($reservation);
+
+        $this->addFlash('success', 'Rezerwacja złożona.');
+        return $this->redirectToRoute('app_reservations');
+    }
+
+    #[IsGranted('ROLE_USER')]
+    #[Route('/{id}/accept', name: 'app_reservation_accept', methods: ['POST'])]
+    public function acceptReservation(Request $request, Reservation $reservation): Response
+    {
         $reservation->setStatus('accepted');
-        $entityManager->flush();
+        $this->em->flush();
 
-        $this->addFlash('success', 'Rezerwacja została zaakceptowana.');
+        // 🔔 powiadom najemcę
+        $this->notifier->reservationAccepted($reservation);
+
+        $this->addFlash('success', 'Rezerwacja zaakceptowana.');
         return $this->redirectToRoute('app_reservations');
     }
 
-    #[Route('/reservations/{id}/reject', name: 'app_reject_reservation', methods: ['POST'])]
-    public function rejectReservation(Reservation $reservation, Security $security, EntityManagerInterface $entityManager): Response
+    #[IsGranted('ROLE_USER')]
+    #[Route('/{id}/reject', name: 'app_reservation_reject', methods: ['POST'])]
+    public function rejectReservation(Request $request, Reservation $reservation): Response
     {
-        $user = $security->getUser();
-
-        if (!$user || $reservation->getCar()->getOwner() !== $user) {
-            $this->addFlash('danger', 'Nie masz uprawnień do odrzucenia tej rezerwacji.');
-            return $this->redirectToRoute('app_reservations');
-        }
-
-        if ($reservation->getStatus() !== 'pending') {
-            $this->addFlash('warning', 'Nie można już zmienić statusu tej rezerwacji.');
-            return $this->redirectToRoute('app_reservations');
-        }
-
         $reservation->setStatus('rejected');
-        $entityManager->flush();
+        $this->em->flush();
 
-        $this->addFlash('danger', 'Rezerwacja została odrzucona.');
+        // 🔔 powiadom najemcę
+        $this->notifier->reservationRejected($reservation);
+
+        $this->addFlash('success', 'Rezerwacja odrzucona.');
         return $this->redirectToRoute('app_reservations');
     }
 
-
-
-
-    #[Route('/reservations/history', name: 'app_reservation_history')]
-    public function reservationHistory(Security $security, EntityManagerInterface $entityManager): Response
+    #[IsGranted('ROLE_USER')]
+    #[Route('/{id}', name: 'app_reservations_show', methods: ['GET'])]
+    public function show(Request $request, Reservation $reservation): Response
     {
-        $user = $security->getUser();
+        $user = $this->getUser();
 
-        if (!$user) {
-            return $this->redirectToRoute('app_login');
+        // Autoryzacja – tylko najemca albo właściciel
+        if ($reservation->getUser() !== $user && $reservation->getCar()->getOwner() !== $user) {
+            throw $this->createAccessDeniedException();
         }
 
-        // Pobieramy rezerwacje użytkownika
-        $reservations = $entityManager->getRepository(Reservation::class)->findBy([
-            'user' => $user
-        ]);
+        // Skąd użytkownik przyszedł? (notifications / reservations)
+        $from = $request->query->get('from', 'reservations');
 
-        return $this->render('reservations/history_reservations.html.twig', [
-            'reservations' => $reservations
-        ]);
-    }
-
-    #[Route('/reservations/{id}/contract', name: 'app_generate_contract')]
-    public function generateContract(Reservation $reservation): Response
-    {
-        // Konfiguracja Dompdf
-        $pdfOptions = new Options();
-        $pdfOptions->set('defaultFont', 'Arial');
-
-        $dompdf = new Dompdf($pdfOptions);
-
-        // Pobieramy dane rezerwacji
-        $user = $reservation->getUser(); // Najemca
-        $car = $reservation->getCar(); // Samochód
-        $owner = $car->getOwner(); // Właściciel samochodu
-        $startDate = $reservation->getStartDate()->format('Y-m-d');
-        $endDate = $reservation->getEndDate()->format('Y-m-d');
-
-        // Obliczamy cenę
-        $days = $reservation->getStartDate()->diff($reservation->getEndDate())->days;
-        $totalPrice = $days * $car->getPricePerDay();
-
-        // Tworzymy HTML faktury
-        $html = '
-        <h1>Faktura</h1>
-        <p><strong>Najemca:</strong> ' . $user->getFullName() . ' (' . $user->getEmail() . ')</p>
-        <p><strong>Właściciel pojazdu:</strong> ' . $owner->getFullName() . ' (' . $owner->getEmail() . ')</p>
-        <p><strong>Samochód:</strong> ' . $car->getBrand() . ' ' . $car->getModel() . ' (' . $car->getYear() . ')</p>
-        <p><strong>Numer rejestracyjny:</strong> ' . $car->getRegistrationNumber() . '</p>
-        <p><strong>Okres wynajmu:</strong> ' . $startDate . ' - ' . $endDate . ' (' . $days . ' dni)</p>
-        <p><strong>Cena za dzień:</strong> ' . number_format($car->getPricePerDay(), 2) . ' PLN</p>
-        <h3><strong>Łączna kwota:</strong> ' . number_format($totalPrice, 2) . ' PLN</h3>
-    ';
-
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
-
-        return new Response($dompdf->output(), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="faktura.pdf"'
-        ]);
-    }
-    #[Route('/reservations/{id}/rental-agreement', name: 'app_generate_rental_agreement')]
-    public function generateRentalAgreement(Reservation $reservation): Response
-    {
-        $pdfOptions = new Options();
-        $pdfOptions->set('defaultFont', 'Arial');
-
-        $dompdf = new Dompdf($pdfOptions);
-
-        $user = $reservation->getUser();
-        $car = $reservation->getCar();
-        $owner = $car->getOwner();
-        $startDate = $reservation->getStartDate()->format('Y-m-d');
-        $endDate = $reservation->getEndDate()->format('Y-m-d');
-
-        $days = $reservation->getStartDate()->diff($reservation->getEndDate())->days;
-        $totalPrice = $days * $car->getPricePerDay();
-
-        $html = '
-        <h1>Umowa najmu pojazdu</h1>
-        <p><strong>Najemca:</strong> ' . $user->getFullName() . ' (' . $user->getEmail() . ')</p>
-        <p><strong>Właściciel pojazdu:</strong> ' . $owner->getFullName() . ' (' . $owner->getEmail() . ')</p>
-        <p><strong>Samochód:</strong> ' . $car->getBrand() . ' ' . $car->getModel() . ' (' . $car->getYear() . ')</p>
-        <p><strong>Numer rejestracyjny:</strong> ' . $car->getRegistrationNumber() . '</p>
-        <p><strong>Okres wynajmu:</strong> ' . $startDate . ' - ' . $endDate . ' (' . $days . ' dni)</p>
-        <p><strong>Cena za dzień:</strong> ' . number_format($car->getPricePerDay(), 2) . ' PLN</p>
-        <h3><strong>Łączna kwota:</strong> ' . number_format($totalPrice, 2) . ' PLN</h3>
-    ';
-
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
-
-        return new Response($dompdf->output(), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="umowa_najmu.pdf"'
-        ]);
-    }
-    #[Route('/reservations/{id<\d+>}', name: 'app_reservation_details')]
-    public function reservationDetails(int $id, EntityManagerInterface $entityManager, Security $security): Response
-    {
-        $reservation = $entityManager->getRepository(Reservation::class)->find($id);
-
-        if (!$reservation) {
-            throw $this->createNotFoundException('Nie znaleziono rezerwacji o ID: ' . $id);
-        }
-
-        $user = $security->getUser();
-
-        // Sprawdź, czy użytkownik ma dostęp do tej rezerwacji
-        if ($reservation->getCar()->getOwner() !== $user && $reservation->getUser() !== $user) {
-            throw $this->createAccessDeniedException('Nie masz uprawnień do podglądu tej rezerwacji.');
-        }
-
-        return $this->render('reservations/reservation_details.html.twig', [
+        return $this->render('reservations/show.html.twig', [
             'reservation' => $reservation,
+            'from'        => $from,
         ]);
     }
-    #[Route('/cars/{id}/availability', name: 'app_car_availability', methods: ['GET'])]
-    public function getCarAvailability(Car $car, EntityManagerInterface $entityManager): Response
+
+
+    private static function parseYmdOrFail(?string $value): \DateTimeImmutable
     {
-        $reservations = $entityManager->getRepository(Reservation::class)->findBy(['car' => $car]);
-        $events = [];
-
-        foreach ($reservations as $reservation) {
-            $events[] = [
-                'title' => 'Zajęty',
-                'start' => $reservation->getStartDate()->format('Y-m-d'),
-                'end' => $reservation->getEndDate()->format('Y-m-d'),
-                'color' => 'red',
-                'status' => 'reserved'
-            ];
-        }
-
-        return $this->json($events);
+        if (!$value) throw new \InvalidArgumentException('Brak daty.');
+        $dt = \DateTimeImmutable::createFromFormat('Y-m-d', $value);
+        return $dt ?: new \DateTimeImmutable($value);
     }
-    #[Route('/cars/{id}/confirm-reservation', name: 'app_confirm_reservation', methods: ['GET', 'POST'])]
-    public function confirmReservation(Request $request, Car $car, EntityManagerInterface $entityManager): Response
-    {
-        if ($request->isMethod('GET')) {
-            $startDate = $request->query->get('start_date');
-            $endDate = $request->query->get('end_date');
-
-            if (!$startDate || !$endDate) {
-                throw $this->createNotFoundException('Nie podano daty rezerwacji.');
-            }
-
-            return $this->render('cars/confirm_reservation.html.twig', [
-                'car' => $car,
-                'startDate' => $startDate,
-                'endDate' => $endDate,
-            ]);
-        }
-
-        // Jeśli metoda to POST – tworzymy rezerwację
-        $startDate = new \DateTime($request->request->get('start_date'));
-        $endDate = new \DateTime($request->request->get('end_date'));
-        $phoneNumber = $request->request->get('phoneNumber');
-        $comments = $request->request->get('comments');
-
-        $today = new \DateTime();
-        $today->setTime(0, 0);
-
-        // ❌ Blokowanie rezerwacji w przeszłości
-        if ($startDate < $today || $endDate < $today) {
-            $this->addFlash('danger', 'Nie można dokonać rezerwacji na przeszłe dni.');
-            return $this->redirectToRoute('app_car_details', ['id' => $car->getId()]);
-        }
-
-        $reservation = new Reservation();
-        $reservation->setCar($car);
-        $reservation->setUser($this->getUser());
-        $reservation->setStartDate($startDate);
-        $reservation->setEndDate($endDate);
-        $reservation->setPhoneNumber($phoneNumber);
-        $reservation->setComments($comments);
-        $reservation->setStatus('pending');
-
-        $entityManager->persist($reservation);
-        $entityManager->flush();
-
-        $this->addFlash('success', 'Rezerwacja została pomyślnie złożona.');
-        return $this->redirectToRoute('app_reservations');
-    }
-    #[Route('/cars/{id}/finalize-reservation', name: 'app_finalize_reservation', methods: ['POST'])]
-    public function finalizeReservation(Request $request, Car $car, EntityManagerInterface $entityManager, Security $security): Response
-    {
-        $user = $security->getUser();
-        if (!$user) {
-            return $this->redirectToRoute('app_login');
-        }
-
-        $startDate = new \DateTime($request->request->get('start_date'));
-        $endDate = new \DateTime($request->request->get('end_date'));
-        $phoneNumber = $request->request->get('phone_number');
-        $rentalLocation = $request->request->get('rental_location');
-        $comments = $request->request->get('comments');
-
-        $reservation = new Reservation();
-        $reservation->setUser($user);
-        $reservation->setCar($car);
-        $reservation->setStartDate($startDate);
-        $reservation->setEndDate($endDate);
-        $reservation->setPhoneNumber($phoneNumber);
-        $reservation->setRentalLocation($rentalLocation);
-        $reservation->setComments($comments);
-        $reservation->setConfirmed(false);
-
-        $entityManager->persist($reservation);
-        $entityManager->flush();
-
-        $this->addFlash('success', 'Rezerwacja została złożona i oczekuje na potwierdzenie.');
-        return $this->redirectToRoute('app_list_cars');
-    }
-
-
-
-
-
 }

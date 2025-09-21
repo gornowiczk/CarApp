@@ -1,0 +1,39 @@
+{% extends 'base.html.twig' %}
+{% block title %}Szczegóły rezerwacji{% endblock %}
+
+{% block body %}
+    <div class="card p-4">
+        <h3 class="mb-3">Rezerwacja #{{ reservation.id }}</h3>
+
+        <ul class="list-group mb-3">
+            <li class="list-group-item"><strong>Samochód:</strong> {{ reservation.car.brand }} {{ reservation.car.model }}</li>
+            <li class="list-group-item"><strong>Właściciel:</strong> {{ reservation.car.owner.fullName }}</li>
+            <li class="list-group-item"><strong>Najemca:</strong> {{ reservation.user.fullName }}</li>
+            <li class="list-group-item"><strong>Okres:</strong> {{ reservation.startDate|date('Y-m-d') }} → {{ reservation.endDate|date('Y-m-d') }}</li>
+            <li class="list-group-item"><strong>Status:</strong>
+                {% set s = reservation.status %}
+                <span class="badge {{ s == 'accepted' ? 'bg-success' : (s == 'pending' ? 'bg-warning text-dark' : (s == 'completed' ? 'bg-secondary' : 'bg-danger')) }}">
+                {{ s == 'accepted' ? 'Zaakceptowana' : (s == 'pending' ? 'Oczekuje' : (s == 'completed' ? 'Zakończona' : 'Odrzucona')) }}
+            </span>
+            </li>
+            <li class="list-group-item"><strong>Cena za dzień:</strong> {{ reservation.car.pricePerDay }} zł</li>
+            <li class="list-group-item"><strong>Łączna cena:</strong>
+                {% set days = reservation.startDate.diff(reservation.endDate).days + 1 %}
+                {{ days * reservation.car.pricePerDay }} zł ({{ days }} dni)
+            </li>
+        </ul>
+
+        <div class="d-flex gap-2">
+            <a href="{{ path('app_contract_generate', {id: reservation.id}) }}" class="btn btn-outline-primary">
+                📄 Pobierz umowę
+            </a>
+            <a href="{{ path('app_invoice_generate', {id: reservation.id}) }}" class="btn btn-outline-success">
+                💰 Pobierz fakturę
+            </a>
+        </div>
+
+        <div class="mt-3">
+            <a href="{{ path('app_reservations') }}" class="btn btn-secondary">← Wróć do listy</a>
+        </div>
+    </div>
+{% endblock %}

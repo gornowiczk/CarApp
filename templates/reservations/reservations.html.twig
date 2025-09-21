@@ -1,81 +1,155 @@
 {% extends 'base.html.twig' %}
-
 {% block title %}Rezerwacje{% endblock %}
 
 {% block body %}
-    <div class="container mt-4">
-        <div class="card shadow p-4">
-            <h2 class="text-center">📋 Moje rezerwacje</h2>
+    <div class="card p-3 shadow-sm">
+        <h3 class="mb-3">📑 Zarządzanie rezerwacjami</h3>
 
-            <table class="table table-striped mt-3">
-                <thead class="table-dark">
-                <tr>
-                    <th>🚗 Samochód</th>
-                    <th>📅 Początek</th>
-                    <th>📅 Koniec</th>
-                    <th>📌 Status</th>
-                    <th>🔍 Akcje</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for reservation in myReservations %}
-                    <tr>
-                        <td>{{ reservation.car.brand }} {{ reservation.car.model }}</td>
-                        <td>{{ reservation.startDate|date('Y-m-d H:i') }}</td>
-                        <td>{{ reservation.endDate|date('Y-m-d H:i') }}</td>
-                        <td>
-                            {% if reservation.status == 'pending' %}
-                                <span class="badge bg-warning">⏳ Oczekuje</span>
-                            {% elseif reservation.status == 'accepted' %}
-                                <span class="badge bg-success">✅ Zaakceptowana</span>
-                            {% else %}
-                                <span class="badge bg-danger">❌ Odrzucona</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="{{ path('app_reservation_details', {'id': reservation.id}) }}" class="btn btn-info btn-sm">🔍 Szczegóły</a>
-                        </td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+        <!-- Zakładki -->
+        <ul class="nav nav-tabs" id="reservationTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="my-tab" data-bs-toggle="tab" data-bs-target="#myReservations"
+                        type="button" role="tab">📅 Moje rezerwacje</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="cars-tab" data-bs-toggle="tab" data-bs-target="#carReservations"
+                        type="button" role="tab">🧑‍🔧 Rezerwacje na moje auta</button>
+            </li>
+        </ul>
 
-            <h2 class="text-center mt-5">🚗 Rezerwacje moich samochodów</h2>
+        <div class="tab-content mt-3">
+            <!-- MOJE REZERWACJE -->
+            <div class="tab-pane fade show active" id="myReservations" role="tabpanel">
+                {% if myReservations is empty %}
+                    <div class="alert alert-info">Nie masz jeszcze rezerwacji.</div>
+                {% else %}
+                    <div class="mb-3">
+                        <label for="statusFilter" class="form-label">🔎 Filtruj według statusu</label>
+                        <select id="statusFilter" class="form-select">
+                            <option value="all">Wszystkie</option>
+                            <option value="accepted">Zaakceptowane</option>
+                            <option value="pending">Oczekujące</option>
+                            <option value="rejected">Odrzucone</option>
+                            <option value="completed">Zakończone</option>
+                        </select>
+                    </div>
+                    <div class="row g-3" id="myReservationList">
+                        {% for r in myReservations %}
+                            {% set days = (r.endDate|date('U') - r.startDate|date('U')) // 86400 + 1 %}
+                            {% set total = days * r.car.pricePerDay %}
+                            <div class="col-md-6 reservation-card" data-status="{{ r.status }}">
+                                <div class="card h-100 border-0 shadow-sm">
+                                    <div class="card-body">
+                                        <h5 class="card-title">{{ r.car.brand }} {{ r.car.model }}</h5>
+                                        <p class="mb-1"><strong>📅 Okres:</strong> {{ r.startDate|date('d.m.Y') }} → {{ r.endDate|date('d.m.Y') }} ({{ days }} dni)</p>
+                                        <p class="mb-1"><strong>💰 Koszt:</strong> {{ total }} zł</p>
+                                        <p class="mb-1"><strong>📍 Lokalizacja:</strong> {{ r.car.location ?? 'brak danych' }}</p>
+                                        <span class="badge
+                                        {% if r.status == 'accepted' %} bg-success
+                                        {% elseif r.status == 'pending' %} bg-warning text-dark
+                                        {% elseif r.status == 'completed' %} bg-secondary
+                                        {% else %} bg-danger {% endif %}">
+                                        {% if r.status == 'accepted' %}Zaakceptowana
+                                        {% elseif r.status == 'pending' %}Oczekuje
+                                        {% elseif r.status == 'completed' %}Zakończona
+                                        {% else %}Odrzucona{% endif %}
+                                    </span>
+                                        <div class="mt-3">
+                                            <a href="{{ path('app_reservations_show', {id: r.id}) }}" class="btn btn-primary btn-sm">➡ Szczegóły</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
 
-            <table class="table table-striped mt-3">
-                <thead class="table-dark">
-                <tr>
-                    <th>🚗 Samochód</th>
-                    <th>👤 Najemca</th>
-                    <th>📅 Początek</th>
-                    <th>📅 Koniec</th>
-                    <th>📌 Status</th>
-                    <th>🔍 Akcje</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for reservation in carReservations %}
-                    <tr>
-                        <td>{{ reservation.car.brand }} {{ reservation.car.model }}</td>
-                        <td>{{ reservation.user.fullName }}</td>
-                        <td>{{ reservation.startDate|date('Y-m-d H:i') }}</td>
-                        <td>{{ reservation.endDate|date('Y-m-d H:i') }}</td>
-                        <td>
-                            {% if reservation.status == 'pending' %}
-                                <span class="badge bg-warning">⏳ Oczekuje</span>
-                            {% elseif reservation.status == 'accepted' %}
-                                <span class="badge bg-success">✅ Zaakceptowana</span>
-                            {% else %}
-                                <span class="badge bg-danger">❌ Odrzucona</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="{{ path('app_reservation_details', {'id': reservation.id}) }}" class="btn btn-info btn-sm">🔍 Szczegóły</a>
-                        </td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+            <!-- REZERWACJE NA MOJE AUTA -->
+            <div class="tab-pane fade" id="carReservations" role="tabpanel">
+                {% if carReservations is empty %}
+                    <div class="alert alert-info">Brak zgłoszeń na Twoje pojazdy.</div>
+                {% else %}
+                    <div class="mb-3">
+                        <label for="carFilter" class="form-label">🚗 Wybierz samochód</label>
+                        <select id="carFilter" class="form-select">
+                            <option value="all">Wszystkie</option>
+                            {% for r in carReservations %}
+                                <option value="{{ r.car.id }}">{{ r.car.brand }} {{ r.car.model }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="list-group" id="carReservationList">
+                        {% for r in carReservations %}
+                            {% set days = (r.endDate|date('U') - r.startDate|date('U')) // 86400 + 1 %}
+                            {% set total = days * r.car.pricePerDay %}
+                            <div class="list-group-item reservation-item shadow-sm mb-2" data-car="{{ r.car.id }}">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="mb-1">{{ r.car.brand }} {{ r.car.model }}</h6>
+                                        <small>👤 Najemca: {{ r.user.firstName }} {{ r.user.lastName }} ({{ r.user.email }})</small><br>
+                                        <small>📅 {{ r.startDate|date('d.m.Y') }} → {{ r.endDate|date('d.m.Y') }} ({{ days }} dni)</small><br>
+                                        <small>💰 Koszt: {{ total }} zł</small>
+                                    </div>
+                                    <div class="text-end">
+                                    <span class="badge
+                                        {% if r.status == 'accepted' %} bg-success
+                                        {% elseif r.status == 'pending' %} bg-warning text-dark
+                                        {% elseif r.status == 'completed' %} bg-secondary
+                                        {% else %} bg-danger {% endif %}">
+                                        {% if r.status == 'accepted' %}Zaakceptowana
+                                        {% elseif r.status == 'pending' %}Oczekuje
+                                        {% elseif r.status == 'completed' %}Zakończona
+                                        {% else %}Odrzucona{% endif %}
+                                    </span>
+                                        <div class="mt-2">
+                                            <a href="{{ path('app_reservations_show', {id: r.id}) }}" class="btn btn-outline-primary btn-sm">➡ Szczegóły</a>
+                                            {% if r.status == 'pending' %}
+                                                <form method="post" action="{{ path('app_reservation_accept', {'id': r.id}) }}" class="d-inline">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('reservation_accept_' ~ r.id) }}">
+                                                    <button class="btn btn-sm btn-success">Akceptuj</button>
+                                                </form>
+                                                <form method="post" action="{{ path('app_reservation_reject', {'id': r.id}) }}" class="d-inline">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('reservation_reject_' ~ r.id) }}">
+                                                    <button class="btn btn-sm btn-outline-danger">Odrzuć</button>
+                                                </form>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // filtr statusów
+            const statusFilter = document.getElementById("statusFilter");
+            const myCards = document.querySelectorAll("#myReservationList .reservation-card");
+            if (statusFilter) {
+                statusFilter.addEventListener("change", function() {
+                    const selected = this.value;
+                    myCards.forEach(c => {
+                        c.style.display = (selected === "all" || c.dataset.status === selected) ? "block" : "none";
+                    });
+                });
+                statusFilter.dispatchEvent(new Event("change"));
+            }
+            // filtr samochodów
+            const carFilter = document.getElementById("carFilter");
+            const carItems = document.querySelectorAll("#carReservationList .reservation-item");
+            if (carFilter) {
+                carFilter.addEventListener("change", function() {
+                    const selected = this.value;
+                    carItems.forEach(i => {
+                        i.style.display = (selected === "all" || i.dataset.car === selected) ? "block" : "none";
+                    });
+                });
+            }
+        });
+    </script>
 {% endblock %}

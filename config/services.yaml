@@ -1,15 +1,38 @@
 parameters:
-    upload_directory: '%kernel.project_dir%/public/uploads/cars'
-
+  locale: 'pl'
+  upload_directory: '%kernel.project_dir%/public/uploads/cars'
 
 services:
-    # default configuration for services in this file
-    _defaults:
-        autowire: true
-        autoconfigure: true
-        bind:
-            $uploadDirectory: '%upload_directory%'
+  # domyślna konfiguracja
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    bind:
+      string $uploadDirectory: '%upload_directory%'
 
-    App\:
-        resource: '../src/'
-        exclude: '../src/{DependencyInjection,Entity,Kernel.php,Tests}'
+  App\:
+    resource: '../src/*'
+    exclude: '../src/{DependencyInjection,Entity,Migrations,Tests,Kernel.php}'
+
+  App\Controller\:
+    resource: '../src/Controller'
+    tags: ['controller.service_arguments']
+
+  # Notyfikacje (baza + e-mail)
+  App\Service\NotificationService:
+    arguments:
+      $mailer: '@mailer'
+      $em: '@doctrine.orm.entity_manager'
+
+  # Event subscriber do powiadomień w navbarze
+  App\EventSubscriber\NotificationSubscriber:
+    tags: ['kernel.event_subscriber']
+
+  # Generowanie PDF (umowy, faktury) – biblioteka dompdf
+  Dompdf\Dompdf:
+    arguments:
+      $options: '@dompdf.options'
+
+  Dompdf\Options:
+    class: Dompdf\Options
+    factory: ['Dompdf\Options', 'create']

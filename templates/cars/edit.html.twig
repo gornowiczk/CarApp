@@ -1,20 +1,85 @@
 {% extends 'base.html.twig' %}
-
-{% block title %}Edytuj Samochód{% endblock %}
+{% block title %}✏ Edytuj samochód{% endblock %}
 
 {% block body %}
-    <div class="container mt-5">
-        <h2 class="text-center">Edytuj samochód</h2>
+    <style>
+        .shell{max-width:1000px;margin:auto}
+        .cardx{border:none;border-radius:18px;box-shadow:0 10px 28px rgba(15,23,42,.08)}
+        .hd{font-weight:800;letter-spacing:.2px}
+        .muted{color:#64748b}
+        .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+        .thumb{position:relative;border-radius:12px;overflow:hidden;background:#f1f5f9}
+        .thumb img{width:100%;height:120px;object-fit:cover;display:block}
+        .thumb .chk{position:absolute;left:8px;top:8px;background:#fff;padding:6px 8px;border-radius:999px;box-shadow:0 4px 10px rgba(0,0,0,.12);font-size:13px}
+        .thumb .cap{position:absolute;right:8px;bottom:8px;background:rgba(15,23,42,.78);color:#fff;padding:4px 8px;border-radius:999px;font-size:12px}
+        .btn-cta{border-radius:12px;font-weight:600}
+    </style>
 
-        <div class="row justify-content-center">
-            <div class="col-md-6">
+    <div class="container my-4 shell">
+        <div class="card cardx">
+            <div class="card-body p-4">
+                <h1 class="hd mb-1">✏ Edytuj samochód</h1>
+                <div class="muted mb-3">Zmień dane, podmień lub usuń zdjęcia.</div>
+
                 {{ form_start(form) }}
 
-                <div class="mb-3">
-                    {{ form_widget(form) }}
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">{{ form_row(form.brand, {'label': 'Marka'}) }}</div>
+                    <div class="col-md-6">{{ form_row(form.model, {'label': 'Model'}) }}</div>
+                    <div class="col-md-4">{{ form_row(form.year, {'label': 'Rok produkcji'}) }}</div>
+                    <div class="col-md-8">{{ form_row(form.registrationNumber, {'label': 'Numer rejestracyjny'}) }}</div>
+                    <div class="col-md-6">{{ form_row(form.pricePerDay, {'label': 'Cena za dzień'}) }}</div>
+                    <div class="col-md-6">{{ form_row(form.location, {'label': 'Lokalizacja'}) }}</div>
                 </div>
 
-                <button class="btn btn-success w-100">Zapisz zmiany</button>
+                {# ===== Aktualne zdjęcie główne + usuń ===== #}
+                <div class="mb-4">
+                    <div class="fw-semibold mb-2">Zdjęcie główne (aktualne)</div>
+                    {% if car.mainImage %}
+                        <div class="thumb mb-2" style="width:260px;">
+                            <img src="{{ asset('uploads/cars/' ~ car.mainImage) }}" alt="główne">
+                            <span class="cap">Główne</span>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="remove_main" name="remove_main" value="1">
+                            <label for="remove_main" class="form-check-label">Usuń zdjęcie główne</label>
+                        </div>
+                    {% else %}
+                        <div class="muted">Brak ustawionego zdjęcia głównego.</div>
+                    {% endif %}
+                </div>
+
+                {# ===== Aktualna galeria + checkboxy do usunięcia ===== #}
+                <div class="mb-4">
+                    <div class="fw-semibold mb-2">Galeria (aktualne)</div>
+                    {% set gal = car.gallery ?? [] %}
+                    {% if gal is not empty %}
+                        <div class="grid">
+                            {% for img in gal %}
+                                <label class="thumb">
+                                    <img src="{{ asset('uploads/cars/' ~ img) }}" alt="galeria">
+                                    <span class="chk">
+                  <input type="checkbox" name="remove_gallery[]" value="{{ img }}" class="form-check-input me-1">
+                  Usuń
+                </span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="muted">Brak zdjęć w galerii.</div>
+                    {% endif %}
+                </div>
+
+                {# ===== Pola do dodania nowych zdjęć ===== #}
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">{{ form_row(form.mainImage, {'label': 'Nowe zdjęcie główne (opcjonalnie)'}) }}</div>
+                    <div class="col-md-6">{{ form_row(form.gallery, {'label': 'Dodaj nowe zdjęcia do galerii (opcjonalnie)'}) }}</div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary btn-cta">💾 Zapisz zmiany</button>
+                    <a href="{{ path('app_my_cars') }}" class="btn btn-outline-secondary btn-cta">⬅ Powrót</a>
+                </div>
 
                 {{ form_end(form) }}
             </div>

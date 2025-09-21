@@ -1,126 +1,210 @@
+{# templates/cars/reservation_details.html.twig #}
 {% extends 'base.html.twig' %}
+{% block title %}{{ car.brand }} {{ car.model }}{% endblock %}
 
-{% block title %}Szczegóły samochodu{% endblock %}
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        .flatpickr-calendar.inline{width:100%;box-shadow:none;border:1px solid #e5e7eb;border-radius:.5rem}
+        .flatpickr-day.selected,.flatpickr-day.startRange,.flatpickr-day.endRange{background:#0d6efd;border-color:#0d6efd;color:#fff}
+        .flatpickr-day.inRange{background:rgba(13,110,253,.15);border-color:rgba(13,110,253,.15)}
+        .flatpickr-day.busy-day{background:#f8d7da!important;color:#842029!important;border-color:#f5c2c7!important}
+        .flatpickr-day.busy-day:hover{background:#f1bfc5!important;color:#6e1a22!important}
+        .legend-dot{display:inline-block;width:.6rem;height:.6rem;border-radius:50%;margin-right:.4rem;vertical-align:middle}
+        .legend-busy{background:#dc3545}
+        .legend-own{background:#0d6efd}
+    </style>
+{% endblock %}
 
 {% block body %}
-    <div class="container mt-4">
-        <h1 class="mb-3">Szczegóły samochodu</h1>
+    {% set reviewCount = reviews is defined ? reviews|length : 0 %}
+    {% set avgSafe = avg is defined ? avg : 0 %}
 
-        <div class="row">
-            <div class="col-md-6">
-                <p><strong>Marka:</strong> {{ car.brand }}</p>
-                <p><strong>Model:</strong> {{ car.model }}</p>
-                <p><strong>Rok produkcji:</strong> {{ car.year }}</p>
-                <p><strong>Numer rejestracyjny:</strong> {{ car.registrationNumber }}</p>
-                <p><strong>Cena za dzień:</strong> {{ car.pricePerDay }} zł</p>
-                <p><strong>Lokalizacja:</strong> {{ car.location }}</p>
-                <p><strong>Dostępność:</strong>
-                    {% if car.isAvailable %}
-                        <span class="badge bg-success">Dostępny</span>
-                    {% else %}
-                        <span class="badge bg-danger">Niedostępny</span>
-                    {% endif %}
-                </p>
-            </div>
-
-            <div class="col-md-6">
+    <div class="row g-4">
+        {# LEWA: zdjęcia + opis + opinie #}
+        <div class="col-lg-7">
+            <div class="card p-3">
+                {% set mainSrc = null %}
                 {% if car.mainImage %}
-                    <p><strong>Zdjęcie główne:</strong></p>
-                    <img src="{{ asset('uploads/cars/' ~ car.mainImage) }}" alt="Zdjęcie samochodu" class="img-fluid rounded shadow">
+                    {% set mainSrc = asset('uploads/cars/' ~ car.mainImage) %}
+                {% elseif car.images is defined and car.images|length > 0 %}
+                    {% set mainSrc = asset('uploads/cars/' ~ ((car.images|first).path)) %}
+                {% elseif car.gallery is iterable and car.gallery|length > 0 %}
+                    {% set mainSrc = asset('uploads/cars/' ~ (car.gallery|first)) %}
                 {% endif %}
 
-                {% if car.gallery %}
-                    <p><strong>Galeria zdjęć:</strong></p>
-                    <div class="gallery d-flex flex-wrap">
-                        {% for image in car.gallery %}
-                            <img src="{{ asset('uploads/cars/' ~ image) }}" alt="Zdjęcie samochodu" class="img-thumbnail me-2">
+                {% if mainSrc %}
+                    <img class="rounded mb-3 img-fluid" src="{{ mainSrc }}" alt="Foto">
+                {% else %}
+                    <div class="rounded mb-3 d-flex align-items-center justify-content-center"
+                         style="height:240px;background:#f4f6f9;border:1px dashed #cbd3dd;">
+                        <div class="text-muted">Brak zdjęcia</div>
+                    </div>
+                {% endif %}
+
+                <h3 class="mb-1">{{ car.brand }} {{ car.model }} <span class="muted">({{ car.year }})</span></h3>
+                <div class="mb-2 muted small">
+                    Rej: {{ car.registrationNumber }}{% if car.location %} • {{ car.location }}{% endif %}
+                </div>
+                <div class="mb-3">
+                  <span class="badge {{ car.isAvailable ? 'bg-success' : 'bg-secondary' }} badge-pill">
+                    {{ car.isAvailable ? 'Dostępny' : 'Niedostępny' }}
+                  </span>
+                </div>
+                <div class="fs-5 fw-bold mb-3">{{ car.pricePerDay }} zł <span class="fw-normal">/ doba</span></div>
+            </div>
+
+            {# OPINIE #}
+            <div id="reviews" class="card p-3 mt-3">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <h5 class="mb-0">Opinie</h5>
+                    <div class="text-muted">
+                        Średnia: <strong>{{ '%.1f'|format(avgSafe) }}/5</strong>
+                        <span class="ms-1">{% set full = avgSafe|round(0,'floor') %}{% for i in 1..5 %}{% if i <= full %}★{% else %}☆{% endif %}{% endfor %}</span>
+                        <span class="ms-2">({{ reviewCount }} {{ reviewCount == 1 ? 'opinia' : (reviewCount in [2,3,4] ? 'opinie' : 'opinii') }})</span>
+                    </div>
+                </div>
+
+                {% if reviews is defined and reviews is not empty %}
+                    <ul class="list-group list-group-flush mt-3">
+                        {% for r in reviews %}
+                            <li class="list-group-item">
+                                <div class="small text-muted">
+                                    {% for i in 1..5 %}{% if i <= r.rating %}★{% else %}☆{% endif %}{% endfor %}
+                                    • {{ r.createdAt|date('Y-m-d H:i') }} • {{ r.user.firstName }} {{ r.user.lastName }}
+                                </div>
+                                <div class="mt-1">{{ r.content }}</div>
+                            </li>
                         {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="muted mt-3">Brak opinii dla tego auta.</div>
+                {% endif %}
+
+                {% if app.user and reviewForm %}
+                    <div class="mt-3">
+                        <h6 class="mb-2">Dodaj opinię</h6>
+                        {{ form_start(reviewForm, { action: path('app_review_add', {'id': car.id}) }) }}
+                        <div class="row g-3">
+                            <div class="col-md-3">{{ form_row(reviewForm.rating) }}</div>
+                            <div class="col-md-9">{{ form_row(reviewForm.content) }}</div>
+                        </div>
+                        <div class="mt-3"><button class="btn btn-primary">Wyślij opinię</button></div>
+                        {{ form_end(reviewForm) }}
                     </div>
                 {% endif %}
             </div>
         </div>
 
-        <hr>
+        {# PRAWA: kalendarz + akcja rezerwacji #}
+        <div class="col-lg-5">
+            <div class="card p-3 mb-3">
+                <div class="d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0">Kalendarz dostępności</h5>
+                    <div class="small text-muted">
+                        <span class="legend-dot legend-busy"></span> zajęte / zablokowane
+                        {% if isOwner %} • <span class="legend-dot legend-own"></span> Twój wybór{% endif %}
+                    </div>
+                </div>
 
-        {% if car.owner == app.user %}
-            <h2 class="mt-4">Kalendarz rezerwacji</h2>
-            <div id="owner-calendar" class="calendar-container"></div>
-        {% else %}
-            <button id="showCalendarBtn" class="btn btn-success mt-3">Zarezerwuj</button>
-            <div id="calendar-section" class="mt-3" style="display: none;">
-                <h2>Wybierz daty rezerwacji</h2>
-                <div id="rental-calendar" class="calendar-container"></div>
-                <button id="confirmReservationBtn" class="btn btn-primary mt-2">Potwierdź rezerwację</button>
+                <div id="rangePicker" class="mt-2"></div>
+                <div class="mt-3 small text-muted" id="rangeSummary">Kliknij i zaznacz zakres (tylko wolne dni)</div>
             </div>
-        {% endif %}
 
-        <a href="{{ path('app_list_cars', {'filter': 'all'}) }}" class="btn btn-secondary">Powrót</a>
-
+            <div class="card p-3">
+                {% if isOwner %}
+                    <div class="alert alert-info mb-0">
+                        Jesteś właścicielem tego auta. Przyciski rezerwacji są ukryte — użyj kalendarza, aby sprawdzić zajęte dni.
+                    </div>
+                {% else %}
+                    {# POST → potwierdzenie (krok 1/2) #}
+                    <form id="reserveForm" method="post" action="{{ path('app_reservation_confirm', {'id': car.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('reserve_confirm_' ~ car.id) }}">
+                        <input type="hidden" name="start" id="start_date">
+                        <input type="hidden" name="end"   id="end_date">
+                        <div class="d-grid gap-2 mt-2">
+                            <button id="reserveBtn" type="submit" class="btn btn-primary" disabled>Zarezerwuj</button>
+                        </div>
+                    </form>
+                    <div class="muted small mt-2">Czerwone dni są niedostępne (exclusive end).</div>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
+    {# (opcjonalnie) podgląd powiadomień #}
+    {% include '_partials/notifications.html.twig' with { notifications: notifications|default([]) } %}
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pl.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var showCalendarBtn = document.getElementById('showCalendarBtn');
-            var calendarSection = document.getElementById('calendar-section');
-            var confirmReservationBtn = document.getElementById('confirmReservationBtn');
-            var selectedStartDate = null;
-            var selectedEndDate = null;
+        document.addEventListener('DOMContentLoaded', async () => {
+            const pickerEl   = document.getElementById('rangePicker');
+            const summaryEl  = document.getElementById('rangeSummary');
+            const startInput = document.getElementById('start_date');
+            const endInput   = document.getElementById('end_date');
+            const reserveBtn = document.getElementById('reserveBtn');
+            const isOwner    = {{ isOwner ? 'true' : 'false' }};
 
-            if (showCalendarBtn) {
-                showCalendarBtn.addEventListener('click', function() {
-                    calendarSection.style.display = 'block';
+            const dms = 24*60*60*1000;
+            const toLocalNoon = (y,m,d) => new Date(y, m-1, d, 12, 0, 0, 0);
+            const fromYMD = (s) => { const [Y,M,D] = s.split('-').map(Number); return toLocalNoon(Y,M,D); }
+            const fmtYMD = (date) => {
+                const Y = date.getFullYear(), M = String(date.getMonth()+1).padStart(2,'0'), D = String(date.getDate()).padStart(2,'0');
+                return `${Y}-${M}-${D}`;
+            };
+
+            let disabledRanges = [];
+            try {
+                const events = await fetch('{{ path('app_car_availability', {'id': car.id}) }}').then(r => r.json());
+                disabledRanges = events.map(e => {
+                    const from = fromYMD(e.start);
+                    const to   = new Date(fromYMD(e.end).getTime() - dms); // end exclusive
+                    return { from, to };
                 });
-            }
+            } catch (e) { console.warn('Nie udało się pobrać dostępności'); }
 
-            function renderCalendar(calendarId, eventsUrl, selectable = false) {
-                return new FullCalendar.Calendar(document.getElementById(calendarId), {
-                    initialView: 'dayGridMonth',
-                    selectable: selectable,
-                    height: 400,
-                    locale: 'pl',
-                    select: function(info) {
-                        if (selectable) {
-                            selectedStartDate = info.startStr;
-                            selectedEndDate = info.endStr;
-                            alert('Wybrano daty: ' + selectedStartDate + ' - ' + selectedEndDate);
+            const isBusy = d => disabledRanges.some(r => d >= r.from && d <= r.to);
+
+            flatpickr(pickerEl, {
+                locale: 'pl',
+                inline: true,
+                mode: 'range',
+                weekNumbers: true,
+                minDate: 'today',
+                disable: disabledRanges.map(r => ({ from: r.from, to: r.to })),
+                onDayCreate: (_, __, ___, day) => {
+                    const d = toLocalNoon(day.dateObj.getFullYear(), day.dateObj.getMonth()+1, day.dateObj.getDate());
+                    if (isBusy(d)) day.classList.add('busy-day');
+                },
+                onChange: (selected) => {
+                    if (isOwner) return;
+                    if (selected.length === 2) {
+                        const s = toLocalNoon(selected[0].getFullYear(), selected[0].getMonth()+1, selected[0].getDate());
+                        const e = toLocalNoon(selected[1].getFullYear(), selected[1].getMonth()+1, selected[1].getDate());
+                        let ok = true, it = new Date(s.getTime());
+                        while (it <= e) { if (isBusy(it)) { ok = false; break; } it = new Date(it.getTime() + dms); }
+                        if (!ok) {
+                            summaryEl.innerHTML = '<span class="text-danger">Wybrany zakres zawiera niedostępne dni.</span>';
+                            startInput.value = endInput.value = '';
+                            reserveBtn && (reserveBtn.disabled = true);
+                            return;
                         }
-                    },
-                    events: eventsUrl,
-                    eventColor: "red"
-                });
-            }
-
-            if (document.getElementById('rental-calendar')) {
-                var rentalCalendar = renderCalendar('rental-calendar', "{{ path('app_car_availability', {'id': car.id}) }}", true);
-                rentalCalendar.render();
-            }
-
-            if (document.getElementById('owner-calendar')) {
-                var ownerCalendar = renderCalendar('owner-calendar', "{{ path('app_car_availability', {'id': car.id}) }}");
-                ownerCalendar.render();
-            }
-
-            if (confirmReservationBtn) {
-                confirmReservationBtn.addEventListener('click', function() {
-                    if (!selectedStartDate || !selectedEndDate) {
-                        alert('Proszę wybrać zakres dat.');
-                        return;
+                        startInput.value = fmtYMD(s);
+                        endInput.value   = fmtYMD(e);
+                        summaryEl.innerHTML = `Wybrany zakres: <strong>${fmtYMD(s)}</strong> → <strong>${fmtYMD(e)}</strong>`;
+                        reserveBtn && (reserveBtn.disabled = false);
+                    } else {
+                        startInput.value = endInput.value = '';
+                        summaryEl.textContent = 'Kliknij i zaznacz zakres (tylko wolne dni)';
+                        reserveBtn && (reserveBtn.disabled = true);
                     }
-                    window.location.href = "{{ path('app_confirm_reservation', {'id': car.id}) }}?start_date=" + selectedStartDate + "&end_date=" + selectedEndDate;
-                });
-            }
+                }
+            });
         });
     </script>
-
-    <style>
-        .calendar-container {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .img-thumbnail {
-            max-width: 100px;
-            margin-bottom: 5px;
-        }
-    </style>
 {% endblock %}

@@ -1,21 +1,59 @@
 {% extends 'base.html.twig' %}
-
-{% block title %}Panel Administratora{% endblock %}
+{% block title %}Panel admina{% endblock %}
 
 {% block body %}
-    <div class="container mt-5">
-        <h2 class="text-center">Panel Administratora</h2>
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card p-3">
+                <div class="muted">Użytkownicy</div>
+                <div class="display-6">{{ users|length }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3">
+                <div class="muted">Auta</div>
+                <div class="display-6">{{ cars|length }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3">
+                <div class="muted">Rezerwacje</div>
+                <div class="display-6">{{ reservations|length }}</div>
+            </div>
+        </div>
+    </div>
 
-        <div class="row mt-4">
-            <div class="col-md-4">
-                <a href="{{ path('admin_cars') }}" class="btn btn-primary w-100">🚗 Zarządzanie samochodami</a>
-            </div>
-            <div class="col-md-4">
-                <a href="{{ path('admin_users') }}" class="btn btn-secondary w-100">👤 Zarządzanie użytkownikami</a>
-            </div>
-            <div class="col-md-4">
-                <a href="{{ path('admin_reservations') }}" class="btn btn-warning w-100">📅 Zarządzanie rezerwacjami</a>
-            </div>
+    <div class="card p-3 mt-4">
+        <h5>Ostatnie rezerwacje</h5>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead class="table-light">
+                <tr>
+                    <th>Auto</th>
+                    <th>Najemca</th>
+                    <th>Od</th>
+                    <th>Do</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for r in reservations|slice(0,10) %}
+                    <tr>
+                        <td>{{ r.car.brand }} {{ r.car.model }}</td>
+                        <td>{{ r.user.email }}</td>
+                        <td>{{ r.startDate|date('Y-m-d') }}</td>
+                        <td>{{ r.endDate|date('Y-m-d') }}</td>
+                        <td>
+              <span class="badge {{ r.status == 'accepted' ? 'bg-success' : (r.status == 'pending' ? 'bg-warning text-dark' : (r.status == 'completed' ? 'bg-secondary' : 'bg-danger')) }}">
+                {{ r.status }}
+              </span>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="5" class="text-center muted">Brak danych</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 {% endblock %}

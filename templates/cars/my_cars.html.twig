@@ -1,49 +1,53 @@
 {% extends 'base.html.twig' %}
-
-{% block title %}Moje samochody{% endblock %}
+{% block title %}Moje auta{% endblock %}
 
 {% block body %}
-    <div class="container mt-4">
-        <h1 class="mb-4 text-center">Moje samochody</h1>
+    <style>
+        .cars-grid{row-gap:28px}
+        .car-card{border:none;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.08);transition:transform .18s,box-shadow .18s;height:100%}
+        .car-card:hover{transform:translateY(-4px);box-shadow:0 16px 42px rgba(15,23,42,.12)}
+        .car-media{position:relative;height:0;padding-top:56.25%;background:#f1f5f9}
+        .car-media img,.no-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+        .no-photo{display:grid;place-items:center;color:#94a3b8;font-size:14px;background:repeating-linear-gradient(45deg,#f8fafc,#f8fafc 10px,#eef2f7 10px,#eef2f7 20px)}
+        .price-badge{position:absolute;right:10px;bottom:10px;background:rgba(15,23,42,.78);color:#fff;padding:6px 10px;border-radius:999px;font-weight:600;font-size:12.5px}
+        .body{padding:14px 16px 16px}
+        .title{font-size:18px;font-weight:700;color:#0f172a;margin:0 0 4px}
+        .muted{color:#64748b;font-size:13px}
+        .btn-cta{border-radius:12px;font-weight:600}
+    </style>
 
-        {% if cars is empty %}
-            <p class="text-center text-muted">Nie dodałeś jeszcze żadnych samochodów.</p>
-        {% else %}
-            <table class="table table-striped text-center">
-                <thead>
-                <tr>
-                    <th>Zdjęcie</th>
-                    <th>Marka</th>
-                    <th>Model</th>
-                    <th>Rok</th>
-                    <th>Akcje</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for car in cars %}
-                    <tr>
-                        <td>
-                            {% if car.mainImage %}
-                                <img src="{{ asset('uploads/cars/' ~ car.mainImage) }}" class="img-thumbnail" width="80">
-                            {% else %}
-                                Brak zdjęcia
-                            {% endif %}
-                        </td>
-                        <td>{{ car.brand }}</td>
-                        <td>{{ car.model }}</td>
-                        <td>{{ car.year }}</td>
-                        <td>
-                            <a href="{{ path('app_car_details', {'id': car.id}) }}" class="btn btn-info btn-sm">Szczegóły</a>
-                            <a href="{{ path('app_edit_car', {'id': car.id}) }}" class="btn btn-warning btn-sm">Edytuj</a>
-                            <form action="{{ path('app_delete_car', {'id': car.id}) }}" method="post" class="d-inline">
-                                <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ car.id) }}">
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Czy na pewno chcesz usunąć ten samochód?');">Usuń</button>
-                            </form>
-                        </td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        {% endif %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="m-0">Moje auta</h3>
+        <a href="{{ path('app_add_car') }}" class="btn btn-primary btn-cta">➕ Dodaj samochód</a>
     </div>
+
+    {% if cars is empty %}
+        <div class="alert alert-info">Nie masz jeszcze dodanych aut.</div>
+    {% else %}
+        <div class="row cars-grid">
+            {% for car in cars %}
+                <div class="col-12 col-sm-6 col-xl-4 d-flex">
+                    <div class="car-card w-100">
+                        <div class="car-media">
+                            {% set img = car.mainImage ? asset('uploads/cars/' ~ car.mainImage) : null %}
+                            {% if img %}<img src="{{ img }}" alt="foto">{% else %}<div class="no-photo">Brak zdjęcia</div>{% endif %}
+                            <span class="price-badge">{{ car.pricePerDay }} zł / dzień</span>
+                        </div>
+                        <div class="body">
+                            <h5 class="title">{{ car.brand }} {{ car.model }}</h5>
+                            <div class="muted mb-3">Rok: {{ car.year }} • Rej: {{ car.registrationNumber }}</div>
+                            <div class="d-grid gap-2">
+                                <a class="btn btn-outline-primary btn-cta" href="{{ path('app_car_details', {'id': car.id}) }}">Szczegóły</a>
+                                <a class="btn btn-outline-secondary btn-cta" href="{{ path('app_car_edit', {'id': car.id}) }}">Edytuj</a>
+                                <form method="post" action="{{ path('app_delete_car', {'id': car.id}) }}" onsubmit="return confirm('Usunąć samochód?')">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('delete_car_' ~ car.id) }}">
+                                    <button class="btn btn-outline-danger btn-cta">Usuń</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
 {% endblock %}

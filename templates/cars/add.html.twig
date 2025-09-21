@@ -1,74 +1,50 @@
 {% extends 'base.html.twig' %}
-
-{% block title %}Dodaj nowy samochód{% endblock %}
+{% block title %}Dodaj samochód{% endblock %}
 
 {% block body %}
-    <h1>Dodaj nowy samochód</h1>
+    <style>
+        .shell{max-width:900px;margin:auto}
+        .cardx{border:none;border-radius:18px;box-shadow:0 10px 28px rgba(15,23,42,.08)}
+        .hd{font-weight:800;letter-spacing:.2px}
+        .muted{color:#64748b}
+        .btn-cta{border-radius:12px;font-weight:600}
+    </style>
 
-    {% for error in form.vars.errors %}
-        <div class="alert alert-danger">
-            {{ error.message }}
+    <div class="container my-4 shell">
+        <div class="card cardx">
+            <div class="card-body p-4">
+                <h1 class="hd mb-1">➕ Dodaj samochód</h1>
+                <div class="muted mb-3">Uzupełnij dane i dodaj zdjęcia.</div>
+
+                {% if form.vars.errors|length %}
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            {% for error in form.vars.errors %}
+                                <li>{{ error.message }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+                {{ form_start(form, {'attr': {'enctype': 'multipart/form-data'}}) }}
+                <div class="row g-3">
+                    <div class="col-md-6">{{ form_row(form.brand) }}</div>
+                    <div class="col-md-6">{{ form_row(form.model) }}</div>
+                    <div class="col-md-4">{{ form_row(form.year) }}</div>
+                    <div class="col-md-8">{{ form_row(form.registrationNumber) }}</div>
+                    <div class="col-md-4">{{ form_row(form.pricePerDay) }}</div>
+                    <div class="col-md-8">{{ form_row(form.location) }}</div>
+                    <div class="col-12">{{ form_row(form.isAvailable) }}</div>
+                    <div class="col-md-6">{{ form_row(form.mainImage) }}</div>
+                    <div class="col-md-6">{{ form_row(form.gallery) }}</div>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <button class="btn btn-primary btn-cta">Zapisz</button>
+                    <a href="{{ path('app_my_cars') }}" class="btn btn-outline-secondary btn-cta">Anuluj</a>
+                </div>
+                {{ form_end(form) }}
+            </div>
         </div>
-    {% endfor %}
-
-    {{ form_start(form, {'attr': {'enctype': 'multipart/form-data'}}) }}
-
-    <div class="form-group">
-        {{ form_label(form.brand) }}
-        {{ form_widget(form.brand, {'attr': {'class': 'form-control'}}) }}
-        {{ form_errors(form.brand) }}
     </div>
-
-    <div class="form-group">
-        {{ form_label(form.model) }}
-        {{ form_widget(form.model, {'attr': {'class': 'form-control'}}) }}
-        {{ form_errors(form.model) }}
-    </div>
-
-    <div class="form-group">
-        {{ form_label(form.year) }}
-        {{ form_widget(form.year, {'attr': {'class': 'form-control'}}) }}
-        {{ form_errors(form.year) }}
-    </div>
-
-    <div class="form-group">
-        {{ form_label(form.registrationNumber) }}
-        {{ form_widget(form.registrationNumber, {'attr': {'class': 'form-control'}}) }}
-        {{ form_errors(form.registrationNumber) }}
-    </div>
-
-    <div class="form-group">
-        {{ form_label(form.pricePerDay) }}
-        {{ form_widget(form.pricePerDay, {'attr': {'class': 'form-control'}}) }}
-        {{ form_errors(form.pricePerDay) }}
-    </div>
-
-    <div class="form-group">
-        {{ form_label(form.location) }}
-        {{ form_widget(form.location, {'attr': {'class': 'form-control'}}) }}
-        {{ form_errors(form.location) }}
-    </div>
-
-    <div class="form-group">
-        {{ form_label(form.isAvailable) }}
-        {{ form_widget(form.isAvailable, {'attr': {'class': 'form-check'}}) }}
-        {{ form_errors(form.isAvailable) }}
-    </div>
-
-    <div class="form-group">
-        <label>Zdjęcie główne samochodu (opcjonalne)</label>
-        {{ form_widget(form.mainImage, {'attr': {'class': 'form-control-file'}}) }}
-        {{ form_errors(form.mainImage) }}
-    </div>
-
-    <div class="form-group">
-        <label>Galeria zdjęć (opcjonalna, można wybrać wiele plików)</label>
-        {{ form_widget(form.gallery, {'attr': {'class': 'form-control-file', 'multiple': 'multiple'}}) }}
-        {{ form_errors(form.gallery) }}
-    </div>
-
-    <button type="submit" class="btn btn-primary">Dodaj samochód</button>
-
-    {{ form_end(form) }}
-
 {% endblock %}

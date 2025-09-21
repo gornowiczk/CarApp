@@ -3,32 +3,141 @@
 {% block title %}Witamy w Wynajmie Aut{% endblock %}
 
 {% block body %}
-    <div class="container mt-4">
-        <div class="text-center">
-            <h1 class="display-4">🚗 Wynajmij auto w kilka chwil!</h1>
-            <p class="lead">Najlepsze oferty wynajmu samochodów w Twojej okolicy.</p>
-            <a href="{{ path('app_list_cars') }}" class="btn btn-primary btn-lg">Przeglądaj samochody</a>
-        </div>
+    <style>
+        /* --- HERO --- */
+        .hero {
+            background: radial-gradient(1200px 600px at 10% -10%, #e9f2ff 0%, transparent 60%),
+            radial-gradient(1000px 500px at 110% 10%, #fff6e6 0%, transparent 55%),
+            linear-gradient(180deg, #ffffff, #f8fafc);
+            border-radius: 22px;
+            padding: clamp(28px, 4vw, 48px);
+            box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
+        }
+        .hero .lead { color: #475569; }
 
-        <hr class="my-4">
+        /* --- GRUPA KART --- */
+        .cars-grid { row-gap: 28px; }
 
-        <h2 class="text-center">Polecane samochody</h2>
+        /* --- KARTA SAMOCHODU --- */
+        .car-card {
+            border: none;
+            border-radius: 18px;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+            transition: transform .18s ease, box-shadow .18s ease;
+            height: 100%;
+        }
+        .car-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 42px rgba(15, 23, 42, 0.12);
+        }
 
-        <div class="row">
-            {% for car in cars %}
-                <div class="col-md-4">
-                    <div class="card shadow-lg">
-                        <img src="{{ asset('uploads/cars/' ~ car.mainImage) }}" class="card-img-top" alt="{{ car.brand }}">
-                        <div class="card-body text-center">
-                            <h5 class="card-title">{{ car.brand }} {{ car.model }}</h5>
-                            <p class="card-text">Cena: <strong>{{ car.pricePerDay }} zł/dzień</strong></p>
-                            <a href="{{ path('app_car_details', {'id': car.id}) }}" class="btn btn-info">Szczegóły</a>
+        /* Obrazek 16:9 + cover */
+        .car-media {
+            position: relative;
+            height: 0;
+            padding-top: 56.25%; /* 16:9 */
+            background: #f1f5f9;
+        }
+        .car-media img, .car-media .no-photo {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+        }
+        .no-photo {
+            display: grid; place-items: center;
+            color: #94a3b8; font-size: 14px; letter-spacing: .3px;
+            background: repeating-linear-gradient(
+                    45deg, #f8fafc, #f8fafc 10px, #eef2f7 10px, #eef2f7 20px
+            );
+        }
+
+        /* Badge z ceną w rogu zdjęcia */
+        .price-badge {
+            position: absolute; right: 10px; bottom: 10px;
+            background: rgba(15, 23, 42, 0.78);
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 12.5px;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Treść karty */
+        .car-body { padding: 14px 16px 16px; }
+        .car-title { font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 4px; }
+        .car-subtle { color: #64748b; font-size: 13px; }
+
+        /* Przyciski */
+        .btn-cta {
+            --bs-btn-bg: #0d6efd;
+            --bs-btn-border-color: #0d6efd;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        .btn-outline-cta {
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        /* Separator sekcji */
+        .section-title {
+            font-weight: 800;
+            letter-spacing: .2px;
+            margin: 28px 0 18px;
+        }
+    </style>
+
+    <div class="container my-4">
+        <!-- HERO -->
+        <section class="hero text-center">
+            <h1 class="display-5 fw-bold mb-2">🚗 Wynajmij auto w kilka chwil!</h1>
+            <p class="lead mb-4">Najlepsze oferty wynajmu samochodów w Twojej okolicy.</p>
+            <a href="{{ path('app_list_cars') }}" class="btn btn-primary btn-lg btn-cta px-4">
+                Przeglądaj samochody
+            </a>
+        </section>
+
+        <h2 class="text-center section-title">Polecane samochody</h2>
+
+        {% if cars is empty %}
+            <div class="text-center text-muted py-5">
+                <div style="font-size:42px;">🧐</div>
+                <p class="mt-2 mb-0">Brak samochodów do wyświetlenia.</p>
+            </div>
+        {% else %}
+            <div class="row cars-grid">
+                {% for car in cars %}
+                    <div class="col-12 col-sm-6 col-lg-4 d-flex">
+                        <div class="car-card w-100">
+                            <div class="car-media">
+                                {% set img = car.mainImage ? asset('uploads/cars/' ~ car.mainImage) : null %}
+                                {% if img %}
+                                    <img src="{{ img }}" alt="{{ car.brand ~ ' ' ~ car.model }}">
+                                {% else %}
+                                    <div class="no-photo">Brak zdjęcia</div>
+                                {% endif %}
+                                <span class="price-badge">{{ car.pricePerDay }} zł / dzień</span>
+                            </div>
+
+                            <div class="car-body">
+                                <h3 class="car-title">{{ car.brand }} {{ car.model }}</h3>
+                                <div class="car-subtle mb-3">
+                                    Rok: {{ car.year }}{% if car.location %} • {{ car.location }}{% endif %}
+                                </div>
+
+                                <div class="d-grid gap-2">
+                                    <a href="{{ path('app_car_details', {'id': car.id}) }}" class="btn btn-outline-primary btn-outline-cta">
+                                        Szczegóły
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            {% else %}
-                <p class="text-center text-muted">Brak samochodów do wyświetlenia.</p>
-            {% endfor %}
-        </div>
+                {% endfor %}
+            </div>
+        {% endif %}
     </div>
 {% endblock %}

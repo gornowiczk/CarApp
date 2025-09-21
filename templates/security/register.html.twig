@@ -3,56 +3,48 @@
 {% block title %}Rejestracja{% endblock %}
 
 {% block body %}
-    <div class="container mt-5">
-        <h1 class="text-center">📝 Rejestracja</h1>
-        <p class="text-center text-muted">Uzupełnij dane, aby utworzyć konto.</p>
+    <div class="container mt-4">
+        <h1 class="mb-4">📝 Rejestracja</h1>
 
-        <div class="card shadow-lg p-4">
-            {{ form_start(registrationForm) }}
+        {{ form_start(registrationForm) }}
 
-            <div class="mb-3">
-                {{ form_label(registrationForm.email, '📧 Email', {'label_attr': {'class': 'form-label'}}) }}
-                {{ form_widget(registrationForm.email, {'attr': {'class': 'form-control', 'placeholder': 'Podaj adres email'}}) }}
-                {{ form_errors(registrationForm.email) }}
-            </div>
-
-            <div class="mb-3">
-                {{ form_label(registrationForm.fullName, '👤 Imię i nazwisko', {'label_attr': {'class': 'form-label'}}) }}
-                {{ form_widget(registrationForm.fullName, {'attr': {'class': 'form-control', 'placeholder': 'Podaj imię i nazwisko'}}) }}
-                {{ form_errors(registrationForm.fullName) }}
-            </div>
-
-            <div class="mb-3">
-                {{ form_label(registrationForm.address, '🏠 Adres zamieszkania', {'label_attr': {'class': 'form-label'}}) }}
-                {{ form_widget(registrationForm.address, {'attr': {'class': 'form-control', 'placeholder': 'Podaj adres zamieszkania'}}) }}
-                {{ form_errors(registrationForm.address) }}
-            </div>
-
-            <div class="mb-3">
-                {{ form_label(registrationForm.phoneNumber, '📞 Numer telefonu', {'label_attr': {'class': 'form-label'}}) }}
-                {{ form_widget(registrationForm.phoneNumber, {'attr': {'class': 'form-control', 'placeholder': 'Podaj numer telefonu'}}) }}
-                {{ form_errors(registrationForm.phoneNumber) }}
-            </div>
-
-            <div class="mb-3">
-                {{ form_label(registrationForm.peselOrNip, '🆔 PESEL/NIP (opcjonalne)', {'label_attr': {'class': 'form-label'}}) }}
-                {{ form_widget(registrationForm.peselOrNip, {'attr': {'class': 'form-control', 'placeholder': 'Podaj PESEL lub NIP (opcjonalnie)'}}) }}
-                {{ form_errors(registrationForm.peselOrNip) }}
-            </div>
-
-            <div class="mb-3">
-                {{ form_label(registrationForm.plainPassword, '🔒 Hasło', {'label_attr': {'class': 'form-label'}}) }}
-                {{ form_widget(registrationForm.plainPassword, {'attr': {'class': 'form-control', 'placeholder': 'Podaj hasło'}}) }}
-                {{ form_errors(registrationForm.plainPassword) }}
-            </div>
-
-            <button type="submit" class="btn btn-primary w-100">✅ Zarejestruj się</button>
-
-            {{ form_end(registrationForm) }}
+        <div class="mb-3">
+            {{ form_label(registrationForm.firstName, 'Imię', {'label_attr': {'class': 'form-label'}}) }}
+            {{ form_widget(registrationForm.firstName, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(registrationForm.firstName) }}
         </div>
 
-        <div class="text-center mt-3">
-            <p>Masz już konto? <a href="{{ path('app_login') }}" class="text-decoration-none">Zaloguj się</a></p>
+        <div class="mb-3">
+            {{ form_label(registrationForm.lastName, 'Nazwisko', {'label_attr': {'class': 'form-label'}}) }}
+            {{ form_widget(registrationForm.lastName, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(registrationForm.lastName) }}
         </div>
+
+        <div class="mb-3">
+            {{ form_label(registrationForm.address, 'Adres', {'label_attr': {'class': 'form-label'}}) }}
+            {{ form_widget(registrationForm.address, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(registrationForm.address) }}
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(registrationForm.email, 'Adres e-mail', {'label_attr': {'class': 'form-label'}}) }}
+            {{ form_widget(registrationForm.email, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(registrationForm.email) }}
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(registrationForm.plainPassword.first, 'Hasło', {'label_attr': {'class': 'form-label'}}) }}
+            {{ form_widget(registrationForm.plainPassword.first, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(registrationForm.plainPassword.first) }}
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(registrationForm.plainPassword.second, 'Powtórz hasło', {'label_attr': {'class': 'form-label'}}) }}
+            {{ form_widget(registrationForm.plainPassword.second, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(registrationForm.plainPassword.second) }}
+        </div>
+
+        <button type="submit" class="btn btn-primary">Zarejestruj</button>
+        {{ form_end(registrationForm) }}
     </div>
 {% endblock %}

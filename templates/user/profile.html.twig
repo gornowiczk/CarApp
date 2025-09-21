@@ -1,19 +1,19 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Moje Konto{% endblock %}
+{% block title %}Mój profil{% endblock %}
 
 {% block body %}
     <div class="container mt-4">
-        <h1 class="text-center">Moje Konto</h1>
+        <h2>👤 Mój profil</h2>
 
-        <div class="card mt-4">
-            <div class="card-body">
-                <p><strong>Imię i nazwisko:</strong> {{ user.fullName }}</p>
-                <p><strong>Email:</strong> {{ user.email }}</p>
-                <p><strong>Rola:</strong> {{ user.roles|join(', ') }}</p>
+        <ul class="list-group mb-3">
+            <li class="list-group-item"><strong>Imię:</strong> {{ user.firstName }}</li>
+            <li class="list-group-item"><strong>Nazwisko:</strong> {{ user.lastName }}</li>
+            <li class="list-group-item"><strong>Email:</strong> {{ user.email }}</li>
+            <li class="list-group-item"><strong>Telefon:</strong> {{ user.phone }}</li>
+            <li class="list-group-item"><strong>Adres:</strong> {{ user.address }}</li>
+        </ul>
 
-                <a href="{{ path('app_user_edit') }}" class="btn btn-primary">Edytuj profil</a>
-            </div>
-        </div>
+        <a href="{{ path('app_user_edit') }}" class="btn btn-primary">✏️ Edytuj profil</a>
     </div>
 {% endblock %}

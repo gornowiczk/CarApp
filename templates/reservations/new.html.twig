@@ -1,13 +1,85 @@
 {# templates/reservations/new.html.twig #}
 {% extends 'base.html.twig' %}
-
-{% block title %}Nowa Rezerwacja{% endblock %}
+{% block title %}Potwierdzenie rezerwacji – {{ car.brand }} {{ car.model }}{% endblock %}
 
 {% block body %}
-    <h2>Nowa Rezerwacja</h2>
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card p-4">
+                <h3 class="mb-3">Potwierdzenie rezerwacji</h3>
 
-    {{ form_start(form) }}
-    {{ form_widget(form) }}
-    <button class="btn btn-primary">Zarezerwuj</button>
-    {{ form_end(form) }}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="fw-bold mb-2">{{ car.brand }} {{ car.model }} ({{ car.year }})</div>
+                            <div class="small text-muted">Rej: {{ car.registrationNumber }}{% if car.location %} • {{ car.location }}{% endif %}</div>
+                            <div class="mt-2">Cena za dobę: <strong>{{ car.pricePerDay }} zł</strong></div>
+                            {% if car.mainImage %}
+                                <img class="img-fluid rounded mt-3" src="{{ asset('uploads/cars/' ~ car.mainImage) }}" alt="foto">
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="d-flex justify-content-between"><span>Od</span><strong id="sumStart">—</strong></div>
+                            <div class="d-flex justify-content-between"><span>Do</span><strong id="sumEnd">—</strong></div>
+                            <div class="d-flex justify-content-between"><span>Liczba dób</span><strong id="sumNights">—</strong></div>
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between"><span>Razem</span><strong id="sumTotal">—</strong></div>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post" class="mt-3" action="{{ path('app_reserve_car', {'id': car.id}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf }}">
+                    <input type="hidden" name="start" value="{{ start }}">
+                    <input type="hidden" name="end"   value="{{ end }}">
+
+                    <div class="alert alert-info small mb-3">
+                        Sprawdź dane. Klikając „Złóż rezerwację” wyślesz zgłoszenie do właściciela.
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <a class="btn btn-outline-secondary" href="{{ path('app_car_details', {'id': car.id}) }}">⬅ Zmień termin</a>
+                        <button class="btn btn-primary">Złóż rezerwację</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        (function(){
+            const dms = 24*60*60*1000;
+            const toLocalNoon = (y,m,d) => new Date(y, m-1, d, 12, 0, 0, 0);
+            const fromYMD = (s) => { const [Y,M,D] = s.split('-').map(Number); return toLocalNoon(Y,M,D); };
+            const fmt = (d) => {
+                const Y = d.getFullYear(), M = String(d.getMonth()+1).padStart(2,'0'), D = String(d.getDate()).padStart(2,'0');
+                return `${Y}-${M}-${D}`;
+            };
+
+            const startStr = "{{ start|e('js') }}";
+            const endStr   = "{{ end|e('js') }}";
+            const pricePerDay = Number('{{ car.pricePerDay }}'.replace(',', '.')) || 0;
+
+            try {
+                const s = fromYMD(startStr);
+                const e = fromYMD(endStr);
+
+                const nights = Math.round((e.getTime()-s.getTime())/dms)+1;
+                const total  = nights * pricePerDay;
+
+                document.getElementById('sumStart').textContent  = fmt(s);
+                document.getElementById('sumEnd').textContent    = fmt(e);
+                document.getElementById('sumNights').textContent = String(nights);
+                document.getElementById('sumTotal').textContent  = (Math.round(total*100)/100).toFixed(2) + ' zł';
+            } catch(e) {
+                // jeśli brak dat, zostaw puste
+            }
+        })();
+    </script>
 {% endblock %}

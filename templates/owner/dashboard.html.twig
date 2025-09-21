@@ -1,0 +1,49 @@
+{% extends 'base.html.twig' %}
+{% block title %}Panel właściciela{% endblock %}
+
+{% block body %}
+    <div class="card p-3">
+        <h3>📊 Panel właściciela</h3>
+
+        <div class="mt-3">
+            <h5>Twoje samochody ({{ cars|length }})</h5>
+            <ul>
+                {% for car in cars %}
+                    <li>{{ car.brand }} {{ car.model }} ({{ car.registrationNumber }})</li>
+                {% else %}
+                    <li>Brak aut.</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="mt-3">
+            <h5>Rezerwacje na Twoje auta ({{ reservations|length }})</h5>
+            <table class="table table-sm">
+                <thead>
+                <tr>
+                    <th>Auto</th>
+                    <th>Najemca</th>
+                    <th>Okres</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for r in reservations %}
+                    <tr>
+                        <td>{{ r.car.brand }} {{ r.car.model }}</td>
+                        <td>{{ r.user.email }}</td>
+                        <td>{{ r.startDate|date('Y-m-d') }} → {{ r.endDate|date('Y-m-d') }}</td>
+                        <td>{{ r.status }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="4" class="text-muted">Brak rezerwacji</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="alert alert-info mt-3">
+            💰 Łączny przychód z zaakceptowanych rezerwacji: <strong>{{ totalIncome }} zł</strong>
+        </div>
+    </div>
+{% endblock %}

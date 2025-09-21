@@ -1,28 +1,86 @@
+{# templates/reservations/show.html.twig #}
 {% extends 'base.html.twig' %}
 
-{% block title %}Szczegóły rezerwacji{% endblock %}
+{% block title %}Rezerwacja #{{ reservation.id }}{% endblock %}
 
 {% block body %}
-    <div class="container">
-        <h1>Szczegóły rezerwacji</h1>
+    <div class="card p-4">
+        <h4 class="mb-3">📄 Szczegóły rezerwacji</h4>
 
-        <p><strong>Najemca:</strong> {{ reservation.user.fullName }} ({{ reservation.user.email }})</p>
-        <p><strong>Samochód:</strong> {{ reservation.car.brand }} {{ reservation.car.model }} ({{ reservation.car.year }})</p>
-        <p><strong>Numer rejestracyjny:</strong> {{ reservation.car.registrationNumber }}</p>
-        <p><strong>Okres wynajmu:</strong> {{ reservation.startDate|date('Y-m-d') }} - {{ reservation.endDate|date('Y-m-d') }}</p>
+        <div class="row mb-2">
+            <div class="col-md-6">
+                <strong>Auto:</strong>
+                {{ reservation.car.brand }} {{ reservation.car.model }}
+                ({{ reservation.car.registrationNumber }})
+            </div>
+            <div class="col-md-6">
+                <strong>Rok:</strong> {{ reservation.car.year }}
+            </div>
+        </div>
 
-        <hr>
+        <div class="row mb-2">
+            <div class="col-md-6">
+                <strong>Najemca:</strong>
+                {{ reservation.user.firstName }} {{ reservation.user.lastName }}
+                ({{ reservation.user.email }})
+            </div>
+            <div class="col-md-6">
+                <strong>Właściciel:</strong>
+                {{ reservation.car.owner.firstName }} {{ reservation.car.owner.lastName }}
+            </div>
+        </div>
 
-        <a href="{{ path('app_generate_contract', { id: reservation.id }) }}" class="btn btn-success">
-            Pobierz fakturę
-        </a>
+        <div class="row mb-2">
+            <div class="col-md-6">
+                <strong>Okres:</strong>
+                {{ reservation.startDate|date('Y-m-d') }}
+                → {{ reservation.endDate|date('Y-m-d') }}
+            </div>
+            <div class="col-md-6">
+                {% set days = ((reservation.endDate|date('U') - reservation.startDate|date('U')) / 86400) + 1 %}
+                <strong>Ilość dni:</strong> {{ days|round }}
+            </div>
+        </div>
 
-        {% if app.user == reservation.car.owner %}
-            <a href="{{ path('app_generate_rental_agreement', { id: reservation.id }) }}" class="btn btn-primary">
-                Drukuj umowę najmu
+        <div class="row mb-2">
+            <div class="col-md-6">
+                <strong>Cena za dobę:</strong> {{ reservation.car.pricePerDay }} zł
+            </div>
+            <div class="col-md-6">
+                <strong>Łączna kwota:</strong> {{ (reservation.car.pricePerDay * days)|number_format(2, ',', ' ') }} zł
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <strong>Status:</strong>
+            {% if reservation.status == 'accepted' %}
+                <span class="badge bg-success">Zaakceptowana</span>
+            {% elseif reservation.status == 'pending' %}
+                <span class="badge bg-warning text-dark">Oczekuje</span>
+            {% elseif reservation.status == 'rejected' %}
+                <span class="badge bg-danger">Odrzucona</span>
+            {% else %}
+                <span class="badge bg-secondary">{{ reservation.status }}</span>
+            {% endif %}
+        </div>
+
+        <div class="mt-3 d-flex gap-2">
+            <a class="btn btn-outline-primary btn-sm"
+               href="{{ path('app_contract_generate', {'id': reservation.id}) }}">
+                📑 Pobierz umowę (PDF)
             </a>
-        {% endif %}
-
-        <a href="{{ path('app_reservations') }}" class="btn btn-secondary">Wróć do rezerwacji</a>
+            <a class="btn btn-outline-success btn-sm"
+               href="{{ path('app_invoice_generate', {'id': reservation.id}) }}">
+                💰 Pobierz fakturę (PDF)
+            </a>
+            <a class="btn btn-secondary btn-sm"
+               href="{% if from is defined and from == 'notifications' %}
+                         {{ path('app_notifications') }}
+                     {% else %}
+                         {{ path('app_reservations') }}
+                     {% endif %}">
+                ← Powrót
+            </a>
+        </div>
     </div>
 {% endblock %}

@@ -1,51 +1,53 @@
 {% extends 'base.html.twig' %}
-
 {% block title %}Historia rezerwacji{% endblock %}
 
 {% block body %}
-    <div class="container mt-4">
-        <div class="card shadow p-4">
-            <h2 class="text-center">📜 Historia rezerwacji</h2>
-            <hr>
+    <style>
+        .cardx{border:none;border-radius:18px;box-shadow:0 10px 28px rgba(15,23,42,.08)}
+        .muted{color:#64748b}
+        .badge-soft{border-radius:999px;padding:.35rem .6rem;font-weight:600;font-size:.8rem}
+        .soft-done{background:#e9fbe7;color:#15803d}
+        .soft-cancel{background:#f1f5f9;color:#475569}
+    </style>
 
-            {% if reservations is empty %}
-                <p class="text-muted text-center">Brak historii rezerwacji.</p>
-            {% else %}
-                <table class="table table-striped mt-3">
-                    <thead class="table-dark">
-                    <tr>
-                        <th>🚗 Samochód</th>
-                        <th>📅 Początek</th>
-                        <th>📅 Koniec</th>
-                        <th>📌 Status</th>
-                        <th>🔍 Szczegóły</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {% for reservation in reservations %}
-                        <tr>
-                            <td>{{ reservation.car.brand }} {{ reservation.car.model }}</td>
-                            <td>{{ reservation.startDate|date('Y-m-d H:i') }}</td>
-                            <td>{{ reservation.endDate|date('Y-m-d H:i') }}</td>
-                            <td>
-                                {% if reservation.status == 'accepted' %}
-                                    <span class="badge bg-success">✅ Zaakceptowana</span>
-                                {% elseif reservation.status == 'pending' %}
-                                    <span class="badge bg-warning">⏳ Oczekuje</span>
-                                {% else %}
-                                    <span class="badge bg-danger">❌ Odrzucona</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <a href="{{ path('app_reservation_details', {'id': reservation.id}) }}" class="btn btn-info btn-sm">🔍 Szczegóły</a>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            {% endif %}
+    <div class="container my-4">
+        <div class="card cardx">
+            <div class="card-body">
+                <h4 class="mb-3">📜 Historia rezerwacji</h4>
 
-            <a href="{{ path('app_list_cars') }}" class="btn btn-secondary mt-3">🏠 Powrót do strony głównej</a>
+                {% if reservations is empty %}
+                    <div class="alert alert-info mb-0">Brak historii.</div>
+                {% else %}
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead class="table-light">
+                            <tr>
+                                <th>Auto</th>
+                                <th>Od</th>
+                                <th>Do</th>
+                                <th>Status</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for r in reservations %}
+                                <tr>
+                                    <td class="fw-semibold">{{ r.car.brand }} {{ r.car.model }}</td>
+                                    <td class="muted">{{ r.startDate|date('Y-m-d H:i') }}</td>
+                                    <td class="muted">{{ r.endDate|date('Y-m-d H:i') }}</td>
+                                    <td>
+                                        {% if r.status == 'completed' %}
+                                            <span class="badge-soft soft-done">Zakończona</span>
+                                        {% else %}
+                                            <span class="badge-soft soft-cancel">Anulowana</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 {% endblock %}
